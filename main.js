@@ -1,105 +1,94 @@
-// 1. Divide the group into matrix of gender and whether HbA1c >= 5.7 (recommended)
-// Male with high HbA1c: 11, 9
-// Male awith low HbA1c: 14, 2, 12
-// Female with high HbA1c: 5, 6, 10, 4
-// Female with low HbA1c: 7, 1, 15, 8
+// script.js
 
-import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
-
-async function loadData(fileName) {
-    const data = await d3.csv(fileName);
-    return data;
+// Utility to create a dual-handle slider
+function createSlider(id, min, max, step, defaultMin, defaultMax) {
+  const slider = document.getElementById(id);
+  noUiSlider.create(slider, {
+    start: [defaultMin, defaultMax],
+    connect: true,
+    range: { min, max },
+    step,
+    tooltips: [true, true],
+    format: {
+      to: value => parseFloat(value).toFixed(1),
+      from: value => parseFloat(value)
+    }
+  });
+  return slider;
 }
 
-function processCommits(data) {
-    data.forEach((d) => {
-        // d.time = d.time ? 
-        d.calorie = +d.calorie;
-        d.total_carb = +d.total_carb;
-        d.sugar = +d.sugar;
-        d.protein = +d.protein;
-    });
+d3.csv("female_high.csv", d3.autoType).then(data => {
+  const svg = d3.select("svg");
+  const width = +svg.attr("width") - 50;
+  const height = +svg.attr("height") - 50;
 
-    data.forEach((d) => {
-        if (d.time) {
-            d.time = d3.timeParse("%Y-%m-%d %H:%M:%S")(d.time);
-        }
-    });
+  const x = d3.scaleLinear()
+    .domain(d3.extent(data, d => d.minutes_from_basis))
+    .range([40, width]);
+  const y = d3.scaleLinear()
+    .domain(d3.extent(data, d => d.current_glucose))
+    .range([height, 10]);
 
-    const groupedData = d3.groups(data, 
-        (d) => d.calorie, 
-        (d) => d.total_carb, 
-        (d) => d.sugar, 
-        (d) => d.protein
+  svg.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x));
+  svg.append("g")
+    .attr("transform", `translate(40,0)`)
+    .call(d3.axisLeft(y));
+
+  const updateChart = () => {
+    const [calMin, calMax]   = calorieSlider.noUiSlider.get().map(Number);
+    const [carbMin, carbMax] = carbsSlider.noUiSlider.get().map(Number);
+    const [sugarMin, sugarMax] = sugarSlider.noUiSlider.get().map(Number);
+    const [protMin, protMax] = proteinSlider.noUiSlider.get().map(Number);
+
+    document.getElementById("calorie-val").textContent = `${calMin} - ${calMax}`;
+    document.getElementById("carbs-val").textContent   = `${carbMin} - ${carbMax}`;
+    document.getElementById("sugar-val").textContent   = `${sugarMin} - ${sugarMax}`;
+    document.getElementById("protein-val").textContent = `${protMin} - ${protMax}`;
+
+    const filtered = data.filter(d =>
+      d.calorie    >= calMin   && d.calorie    <= calMax &&
+      d.total_carb >= carbMin  && d.total_carb <= carbMax &&
+      d.sugar      >= sugarMin && d.sugar      <= sugarMax &&
+      d.protein    >= protMin  && d.protein    <= protMax
     );
 
-    return groupedData.map(([calorie, carbGroups]) => {
-        return carbGroups.map(([total_carb, sugarGroups]) => {
-            return sugarGroups.map(([sugar, proteinGroups]) => {
-                return proteinGroups.map(([protein, items]) => {
-                    return items.map((item) => ({
-                        calorie: item.calorie,
-                        total_carb: item.total_carb,
-                        sugar: item.sugar,
-                        protein: item.protein,
-                        ...item
-                    }));
-                });
-            }).flat();
-        }).flat();
-    }).flat();
-}
+    const circles = svg.selectAll("circle")
+      .data(filtered, d => d.current_time);
 
-function extractData(processedDatadata, cal_low, cal_high, carb_low, carb_high, sugar_low, sugar_high, protein_low, protein_high) {
-    const data = processedData.filter((d) => {
-        return (
-            d.calorie >= cal_low &&
-            d.calorie <= cal_high &&
-            d.total_carb >= carb_low &&
-            d.total_carb <= carb_high &&
-            d.sugar >= sugar_low &&
-            d.sugar <= sugar_high &&    
-            d.protein >= protein_low &&
-            d.protein <= protein_high
-        );
-    });
-    const result = [];
-    data.forEach((d) => {
-        const { calorie, total_carb, sugar, protein } = d;
-        result.push({ calorie, total_carb, sugar, protein });
-    });
-    return result;
-}
+    circles.enter().append("circle")
+      .attr("r", 3)
+      .style("fill", "steelblue")
+      .merge(circles)
+      .attr("cx", d => x(d.minutes_from_basis))
+      .attr("cy", d => y(d.current_glucose));
 
-const input_data = await loadData('./data/001/summary001.csv');
-const processedData = processCommits(input_data);
-console.log(processedData)
+    circles.exit().remove();
+  };
 
-const male_high = await loadData('./data/male_high.csv');
-const processed_male_high = processCommits(male_high);
+  // 1. Create sliders
+  const calorieSlider = createSlider("calorie-slider",  0, 200, 1,   0, 200);
+  const carbsSlider   = createSlider("carbs-slider",    0, 100, 1,   0, 100);
+  const sugarSlider   = createSlider("sugar-slider",    0, 100, 1,   0, 100);
+  const proteinSlider = createSlider("protein-slider",  0, 50,  0.5, 0, 50);
 
-document.body.insertAdjacentHTML(
-    'afterbegin',
-    `
-    <label id="gender-scheme">
-        Gender:
-        <select id="set-gender">
-          <option value='male'>Male</option>
-          <option value='female'>Female</option>
-          <option value='both-mf'>Both</option>
-        </select>
-    </label>`,
-);
+  // 2. Wire up update callbacks
+  [calorieSlider, carbsSlider, sugarSlider, proteinSlider]
+    .forEach(slider => slider.noUiSlider.on('update', updateChart));
 
-document.body.insertAdjacentHTML(
-    'afterbegin',
-    `
-    <label id="glucose-scheme">
-        Glucose:
-        <select id="set-glucose">
-          <option value='high'>High</option>
-          <option value='low'>Low</option>
-          <option value='both-hl'>Both</option>
-        </select>
-    </label>`,
-);
+  // Initial draw
+  updateChart();
+
+  const resetButton = document.getElementById("reset-button");
+  resetButton.addEventListener("click", () => {
+    // reset all four sliders back to their defaults
+    calorieSlider.noUiSlider.set([0, 200]);
+    carbsSlider.noUiSlider.set([0, 100]);
+    sugarSlider.noUiSlider.set([0, 100]);
+    proteinSlider.noUiSlider.set([0, 50]);
+});
+
+// Add this after the sliders are created
+
+})
