@@ -2,6 +2,9 @@
 // Utility to create a dual-handle slider
 function createSlider(id, min, max, step, defaultMin, defaultMax) {
   const slider = document.getElementById(id);
+  if (slider.noUiSlider) {               // ← destroy old slider if present
+    slider.noUiSlider.destroy();
+  }
   noUiSlider.create(slider, {
     start: [defaultMin, defaultMax],
     connect: true,
@@ -182,34 +185,77 @@ document.body.insertAdjacentHTML(
   </label>`,
 )
 
-let gender='both-mf';
-let glucose='both-hl';
-let genderselect = document.querySelector('select#set-gender');
-let glucoseselect = document.querySelector('select#set-glucose');
+const allDataFiles = [
+  { name: 'Sample A (M, High)',  file: 'data/male_high.csv',   gender: 'male',   glucose: 'high' },
+  { name: 'Sample B (M, Low)',   file: 'data/male_low.csv',    gender: 'male',   glucose: 'low'  },
+  { name: 'Sample C (F, High)',  file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
+  { name: 'Sample D (F, Low)',   file: 'data/female_low.csv',  gender: 'female', glucose: 'low'  },
+  // … any others …
+];
 
-genderselect.addEventListener('input', function(event) {
-  // Handle
-  gender = event.target.value;
-  if (gender == 'both-mf') {
-    if (glucose == 'both-hl') {
-      initializeChartAndSliders([
-        { name: 'Female High', file: 'data/female_high.csv' },
-        { name: 'Female Low',  file: 'data/female_low.csv' },
-        { name: 'Male High',   file: 'data/male_high.csv' },
-        { name: 'Male Low',   file: 'data/male_low.csv' }
-      ]);
-    } else if (glucose == 'high') {
-      initializeChartAndSliders([
-        { name: 'Female High', file: 'data/female_high.csv' },
-        { name: 'Male High',   file: 'data/male_high.csv' },
-    ]);
-  }
-  }
-});
-glucoseselect.addEventListener('input', function(event) {
-  // Handle
-  glucose = event.target.value;
-});
+// Convenience: container SVG selection
+const svg = d3.select('svg');
+
+// This function drives loading + drawing for whatever list you pass in
+function drawChart(dataFiles) {
+  // first, clear out anything inside the <svg>
+  svg.selectAll('*').remove();
+
+  initializeChartAndSliders(dataFiles);
+}
+
+// Initial draw with everything
+drawChart(allDataFiles);
+
+// Grab the two new selectors
+const genderSelect  = d3.select('#set-gender');
+const glucoseSelect = d3.select('#set-glucose');
+
+function onFilterChange() {
+  const gender  = genderSelect.node().value;   // "male", "female", or "both-mf"
+  const glucose = glucoseSelect.node().value;  // "high", "low", or "both-hl"
+
+  const filtered = allDataFiles.filter(d => {
+    const genderOK  = gender  === 'both-mf' ? true : d.gender  === gender;
+    const glucoseOK = glucose === 'both-hl'? true : d.glucose === glucose;
+    return genderOK && glucoseOK;
+  });
+
+  drawChart(filtered);
+}
+
+// Attach listeners so any change re-draws
+genderSelect.on('change', onFilterChange);
+glucoseSelect.on('change', onFilterChange);
+
+// let gender='both-mf';
+// let glucose='both-hl';
+// let genderselect = document.querySelector('select#set-gender');
+// let glucoseselect = document.querySelector('select#set-glucose');
+
+// genderselect.addEventListener('input', function(event) {
+//   // Handle
+//   gender = event.target.value;
+//   if (gender == 'both-mf') {
+//     if (glucose == 'both-hl') {
+//       initializeChartAndSliders([
+//         { name: 'Female High', file: 'data/female_high.csv' },
+//         { name: 'Female Low',  file: 'data/female_low.csv' },
+//         { name: 'Male High',   file: 'data/male_high.csv' },
+//         { name: 'Male Low',   file: 'data/male_low.csv' }
+//       ]);
+//     } else if (glucose == 'high') {
+//       initializeChartAndSliders([
+//         { name: 'Female High', file: 'data/female_high.csv' },
+//         { name: 'Male High',   file: 'data/male_high.csv' },
+//     ]);
+//   }
+//   }
+// });
+// glucoseselect.addEventListener('input', function(event) {
+//   // Handle
+//   glucose = event.target.value;
+// });
 // Pass an array of datasets with name and file path
 initializeChartAndSliders([
   { name: 'Female High', file: 'data/female_high.csv' },
@@ -217,3 +263,4 @@ initializeChartAndSliders([
   { name: 'Male High',   file: 'data/male_high.csv' },
   { name: 'Male Low',   file: 'data/male_low.csv' }
 ]);
+
