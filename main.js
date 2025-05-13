@@ -1,5 +1,4 @@
-// script.js
-
+// main.js
 // Utility to create a dual-handle slider
 function createSlider(id, min, max, step, defaultMin, defaultMax) {
   const slider = document.getElementById(id);
@@ -10,85 +9,211 @@ function createSlider(id, min, max, step, defaultMin, defaultMax) {
     step,
     tooltips: [true, true],
     format: {
-      to: value => parseFloat(value).toFixed(1),
-      from: value => parseFloat(value)
+      to: v => parseFloat(v).toFixed(1),
+      from: v => parseFloat(v)
     }
   });
   return slider;
 }
 
-d3.csv("female_high.csv", d3.autoType).then(data => {
-  const svg = d3.select("svg");
-  const width = +svg.attr("width") - 50;
-  const height = +svg.attr("height") - 50;
+// Color‐scheme definitions (perceptually uniform)
+const colorSchemes = {
+  Viridis: d3.interpolateViridis,
+  Plasma:  d3.interpolatePlasma,
+  Inferno: d3.interpolateInferno,
+  Magma:   d3.interpolateMagma
+};
 
-  const x = d3.scaleLinear()
-    .domain(d3.extent(data, d => d.minutes_from_basis))
-    .range([40, width]);
-  const y = d3.scaleLinear()
-    .domain(d3.extent(data, d => d.current_glucose))
-    .range([height, 10]);
+// Initialize chart with multiple CSV files
+function initializeChartAndSliders(dataFiles) {
+  // Load all datasets
+  const promises = dataFiles.map(d =>
+    d3.csv(d.file, d3.autoType).then(raw => ({ name: d.name, raw }))
+  );
 
-  svg.append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x));
-  svg.append("g")
-    .attr("transform", `translate(40,0)`)
-    .call(d3.axisLeft(y));
+  Promise.all(promises).then(allData => {
+    // Common setup
+    const times = d3.range(0, 61, 5).map(String);
+    const dataSets = allData.map(({ name, raw }) => ({
+      name,
+      meta: raw.map(d => ({ calorie: d.calorie, total_carb: d.total_carb, sugar: d.sugar, protein: d.protein })),
+      seriesRaw: raw.map(d => times.map(t => ({ minute: +t, value: d[t] })).filter(pt => pt.value != null))
+    }));
 
-  const updateChart = () => {
-    const [calMin, calMax]   = calorieSlider.noUiSlider.get().map(Number);
-    const [carbMin, carbMax] = carbsSlider.noUiSlider.get().map(Number);
-    const [sugarMin, sugarMax] = sugarSlider.noUiSlider.get().map(Number);
-    const [protMin, protMax] = proteinSlider.noUiSlider.get().map(Number);
+    const svg = d3.select('svg');
+    const W = +svg.attr('width') - 50;
+    const H = +svg.attr('height') - 50;
 
-    document.getElementById("calorie-val").textContent = `${calMin} - ${calMax}`;
-    document.getElementById("carbs-val").textContent   = `${carbMin} - ${carbMax}`;
-    document.getElementById("sugar-val").textContent   = `${sugarMin} - ${sugarMax}`;
-    document.getElementById("protein-val").textContent = `${protMin} - ${protMax}`;
+    const x = d3.scaleLinear().domain([0, 60]).range([40, W]);
+    let y = d3.scaleLinear().range([H, 10]);
 
-    const filtered = data.filter(d =>
-      d.calorie    >= calMin   && d.calorie    <= calMax &&
-      d.total_carb >= carbMin  && d.total_carb <= carbMax &&
-      d.sugar      >= sugarMin && d.sugar      <= sugarMax &&
-      d.protein    >= protMin  && d.protein    <= protMax
-    );
+    // Axes groups
+    svg.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${H})`)
+      .call(d3.axisBottom(x));
 
-    const circles = svg.selectAll("circle")
-      .data(filtered, d => d.current_time);
+    svg.append('g')
+      .attr('class', 'y-axis')
+      .attr('transform', `translate(40,0)`);
 
-    circles.enter().append("circle")
-      .attr("r", 3)
-      .style("fill", "steelblue")
-      .merge(circles)
-      .attr("cx", d => x(d.minutes_from_basis))
-      .attr("cy", d => y(d.current_glucose));
+    // Controls
+    const calorieSlider = createSlider('calorie-slider', 0, 2000, 1, 0, 2000);
+    const carbsSlider   = createSlider('carbs-slider',   0, 200,  1, 0, 200);
+    const sugarSlider   = createSlider('sugar-slider',   0, 200,  1, 0, 200);
+    const proteinSlider = createSlider('protein-slider', 0, 200,  1, 0, 200);
+    const colorSelect   = d3.select('#color-select');
 
-    circles.exit().remove();
-  };
+    // Smoothing line generator
+    const lineGen = d3.line()
+      .x(d => x(d.minute))
+      .y(d => y(d.value))
+      .curve(d3.curveBasis);
 
-  // 1. Create sliders
-  const calorieSlider = createSlider("calorie-slider",  0, 200, 1,   0, 200);
-  const carbsSlider   = createSlider("carbs-slider",    0, 100, 1,   0, 100);
-  const sugarSlider   = createSlider("sugar-slider",    0, 100, 1,   0, 100);
-  const proteinSlider = createSlider("protein-slider",  0, 50,  0.5, 0, 50);
+    function updateChart() {
+      // Get filter extents
+      const [cMin,cMax]   = calorieSlider.noUiSlider.get().map(Number);
+      const [cbMin,cbMax] = carbsSlider.noUiSlider.get().map(Number);
+      const [sMin,sMax]   = sugarSlider.noUiSlider.get().map(Number);
+      const [pMin,pMax]   = proteinSlider.noUiSlider.get().map(Number);
 
-  // 2. Wire up update callbacks
-  [calorieSlider, carbsSlider, sugarSlider, proteinSlider]
-    .forEach(slider => slider.noUiSlider.on('update', updateChart));
+      // Prepare series data per dataset
+      const seriesData = dataSets.map(ds => {
+        // Filter rows
+        const filteredIdx = ds.meta
+          .map((m,i) => (m.calorie>=cMin && m.calorie<=cMax && m.total_carb>=cbMin && m.total_carb<=cbMax && m.sugar>=sMin && m.sugar<=sMax && m.protein>=pMin && m.protein<=pMax) ? i : null)
+          .filter(i => i !== null);
 
-  // Initial draw
-  updateChart();
+        // Aggregate per minute
+        const aggregated = times.map(t => {
+          const vals = filteredIdx.map(i => {
+            const pt = ds.seriesRaw[i].find(p => p.minute === +t);
+            return pt ? pt.value : null;
+          }).filter(v => v != null);
+          return { minute: +t, value: d3.mean(vals) };
+        }).filter(pt => pt.value != null);
 
-  const resetButton = document.getElementById("reset-button");
-  resetButton.addEventListener("click", () => {
-    // reset all four sliders back to their defaults
-    calorieSlider.noUiSlider.set([0, 200]);
-    carbsSlider.noUiSlider.set([0, 100]);
-    sugarSlider.noUiSlider.set([0, 100]);
-    proteinSlider.noUiSlider.set([0, 50]);
+        return { name: ds.name, series: aggregated };
+      });
+
+      // Recompute y-domain based on filtered data extremes
+      const allValues = seriesData.flatMap(d => d.series.map(pt => pt.value));
+      const [yMin, yMax] = d3.extent(allValues);
+      y.domain([yMin, yMax]).nice();
+
+      // Update Y axis
+      svg.select('.y-axis').call(d3.axisLeft(y));
+
+      // Color palette for datasets
+      const schemeFn = colorSchemes[colorSelect.node().value];
+      const colorScale = d3.scaleSequential(schemeFn).domain([0, seriesData.length - 1 || 1]);
+
+      // DATA JOIN for groups
+      const groups = svg.selectAll('.data-group')
+        .data(seriesData, d => d.name);
+      const enterG = groups.enter().append('g').attr('class', 'data-group');
+
+      // Draw/update each dataset
+      enterG.merge(groups).each(function(d,i) {
+        // Path
+        const path = d3.select(this).selectAll('path').data([d.series]);
+        path.enter().append('path')
+          .merge(path)
+          .attr('d', lineGen)
+          .attr('fill', 'none')
+          .attr('stroke', colorScale(i))
+          .attr('stroke-width', 2);
+        path.exit().remove();
+
+        // Circles
+        const circs = d3.select(this).selectAll('circle').data(d.series);
+        circs.enter().append('circle').attr('r',3)
+          .merge(circs)
+          .attr('cx', pt => x(pt.minute))
+          .attr('cy', pt => y(pt.value))
+          .attr('fill', colorScale(i));
+        circs.exit().remove();
+      });
+
+      groups.exit().remove();
+    }
+
+    // Event bindings
+    [calorieSlider, carbsSlider, sugarSlider, proteinSlider].forEach(s => s.noUiSlider.on('update', updateChart));
+    colorSelect.on('change', updateChart);
+    d3.select('#reset-button').on('click', () => {
+      calorieSlider.noUiSlider.set([0,2000]);
+      carbsSlider.noUiSlider.set([0,200]);
+      sugarSlider.noUiSlider.set([0,200]);
+      proteinSlider.noUiSlider.set([0,200]);
+      colorSelect.property('value','Viridis');
+      updateChart();
+    });
+
+    // Initial draw
+    updateChart();
+  });
+}
+
+
+
+document.body.insertAdjacentHTML(
+  'afterbegin',
+  `
+  <label id="gender-scheme">
+  Gender:
+  <select id="set-gender">
+    <option value="both-mf">Both</option>
+    <option value="male">Male</option>
+    <option value="female">Female</option>
+  </select>
+  </label>`,
+)
+document.body.insertAdjacentHTML(
+  'afterbegin',
+  `
+  <label id="glucose-scheme">
+  Glucose:
+  <select id="set-glucose">
+    <option value="both-hl">Both</option>
+    <option value="high">High</option>
+    <option value="low">Low</option>
+  </select>
+  </label>`,
+)
+
+let gender='both-mf';
+let glucose='both-hl';
+let genderselect = document.querySelector('select#set-gender');
+let glucoseselect = document.querySelector('select#set-glucose');
+
+genderselect.addEventListener('input', function(event) {
+  // Handle
+  gender = event.target.value;
+  if (gender == 'both-mf') {
+    if (glucose == 'both-hl') {
+      initializeChartAndSliders([
+        { name: 'Female High', file: 'data/female_high.csv' },
+        { name: 'Female Low',  file: 'data/female_low.csv' },
+        { name: 'Male High',   file: 'data/male_high.csv' },
+        { name: 'Male Low',   file: 'data/male_low.csv' }
+      ]);
+    } else if (glucose == 'high') {
+      initializeChartAndSliders([
+        { name: 'Female High', file: 'data/female_high.csv' },
+        { name: 'Male High',   file: 'data/male_high.csv' },
+    ]);
+  }
+  }
 });
-
-// Add this after the sliders are created
-
-})
+glucoseselect.addEventListener('input', function(event) {
+  // Handle
+  glucose = event.target.value;
+});
+// Pass an array of datasets with name and file path
+initializeChartAndSliders([
+  { name: 'Female High', file: 'data/female_high.csv' },
+  { name: 'Female Low',  file: 'data/female_low.csv' },
+  { name: 'Male High',   file: 'data/male_high.csv' },
+  { name: 'Male Low',   file: 'data/male_low.csv' }
+]);
