@@ -1,19 +1,74 @@
-.slider-container { 
-    margin: 15px 0; 
-}
-
-.slider-label { 
-    font-weight: bold; 
-    display: block; 
-    margin-bottom: 5px; 
+body {
+    display: block;
+    max-width: 100ch;
+    margin-inline: auto;
+    padding: 32px;
 }
 
 #controls { 
     max-width: 700px; 
 }
+
+.container { 
+    width: 100%;
+    max-width: 700px; 
+}
     
 svg { 
+    /* margin: 20px auto;
     margin-top: 20px; 
     border: 1px solid #ccc; 
+    display: block; */
+    display: block;
+    width: 100%;
+    height: auto; /* Maintain aspect ratio */
+    overflow: visible;
 }
 
+/* slider style */
+.noUi-target {
+    background: linear-gradient(to right, #f5f5f5, #e0e0e0);
+    height: 12px;
+}
+  
+.noUi-connect {
+    background: linear-gradient(to right, #76c0fd, #011315); /* Blue gradient */
+}
+  
+.noUi-handle {
+    width: 10px;
+    height: 10px;
+    border: 3px solid #2196F3;
+    background: #fff;
+}
+
+/*tooltip for sliders*/
+.noUi-tooltip {
+    display: none;
+}
+.noUi-target:hover .noUi-tooltip,
+.noUi-handle:hover .noUi-tooltip {
+  display: block;
+}
+
+/*make sliders away from each other*/
+.slider-container {
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-bottom: 30px;
+    width: 100%;
+}
+.slider-label {
+    margin-bottom: 10px;
+    font-weight: bold; 
+    display: block; 
+}
+
+svg {
+    width: 100%; /* Scales to container */
+    height: auto; /* Maintains aspect ratio */
+}
+
+div.writeup {
+    margin-top: 40px;
+}
