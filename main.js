@@ -3,25 +3,26 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 // create a slider with min, max range 
 function createSlider(id, min, max, step, defaultMin, defaultMax) {
   const slider = document.getElementById(id);
+  if (slider.noUiSlider) {               // ← destroy old slider if present
+    slider.noUiSlider.destroy();
+  }
   noUiSlider.create(slider, {
     start: [defaultMin, defaultMax],
     connect: true,
     range: { min, max },
     step,
     tooltips: [true, true],
-    
   });
-
   return slider;
 }
 
 // Color‐scheme definitions (perceptually uniform)
-const colorSchemes = {
-  Viridis: d3.interpolateViridis,
-  Plasma:  d3.interpolatePlasma,
-  Inferno: d3.interpolateInferno,
-  Magma:   d3.interpolateMagma
-};
+// const colorSchemes = {
+//   Viridis: d3.interpolateViridis,
+//   Plasma:  d3.interpolatePlasma,
+//   Inferno: d3.interpolateInferno,
+//   Magma:   d3.interpolateMagma
+// };
 
 // Initialize chart with multiple CSV files
 function initializeChartAndSliders(dataFiles) {
@@ -65,7 +66,7 @@ function initializeChartAndSliders(dataFiles) {
     const carbsSlider   = createSlider('carbs-slider',   0, 200,  1, 0, 200);
     const sugarSlider   = createSlider('sugar-slider',   0, 200,  1, 0, 200);
     const proteinSlider = createSlider('protein-slider', 0, 200,  1, 0, 200);
-    const colorSelect   = d3.select('#color-select');
+    // const colorSelect   = d3.select('#color-select');
 
     // map x and y data points
     // add smooth curve and make sure it passes all data points
@@ -110,8 +111,8 @@ function initializeChartAndSliders(dataFiles) {
       svg.select('.y-axis').call(d3.axisLeft(y));
 
       // Color palette for datasets
-      const schemeFn = colorSchemes[colorSelect.node().value];
-      const colorScale = d3.scaleSequential(schemeFn).domain([0, seriesData.length - 1 || 1]);
+      // const schemeFn = colorSchemes[colorSelect.node().value];
+      // const colorScale = d3.scaleSequential(schemeFn).domain([0, seriesData.length - 1 || 1]);
 
       // find elements that are binded to data-group
       const groups = svg.selectAll('.data-group')
@@ -119,6 +120,8 @@ function initializeChartAndSliders(dataFiles) {
 
       // create new <g class = "data-group"> for data points in seriesData
       const enterG = groups.enter().append('g').attr('class', 'data-group');
+
+      let colorScale = d3.scaleOrdinal(d3.schemePaired);
 
       // draw path and circles for each dataset
       enterG.merge(groups).each(function(d,i) {
@@ -148,13 +151,13 @@ function initializeChartAndSliders(dataFiles) {
 
     // add event listener to each of the sliders
     [calorieSlider, carbsSlider, sugarSlider, proteinSlider].forEach(s => s.noUiSlider.on('update', updateChart));
-    colorSelect.on('change', updateChart);
+    // colorSelect.on('change', updateChart);
     d3.select('#reset-button').on('click', () => {
       calorieSlider.noUiSlider.set([0,2000]);
       carbsSlider.noUiSlider.set([0,200]);
       sugarSlider.noUiSlider.set([0,200]);
       proteinSlider.noUiSlider.set([0,200]);
-      colorSelect.property('value','Viridis');
+      // colorSelect.property('value','Viridis');
       updateChart();
     });
 
