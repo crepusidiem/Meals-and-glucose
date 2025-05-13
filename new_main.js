@@ -2,6 +2,11 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 
 let dataSets;
 
+let sugarMax = 150;
+let carbMax = 460;
+let proteinMax = 130;
+let calorieMax = 3480;
+
 // load all csv data files
 async function loadData(dataFiles) {
   const allFiles = await Promise.all(
@@ -150,10 +155,10 @@ async function initializeChartAndSliders(dataFiles) {
   svg.append('g').attr('class', 'y-axis').attr('transform', `translate(40,0)`);
 
   // create sliders based on extreme values for each nutrition 
-  const calorieSlider = createSlider('calorie-slider', 0, 2000, 1, 0, 2000);
-  const carbsSlider = createSlider('carbs-slider', 0, 200, 1, 0, 200);
-  const sugarSlider = createSlider('sugar-slider', 0, 200, 1, 0, 200);
-  const proteinSlider = createSlider('protein-slider', 0, 200, 1, 0, 200);
+  const calorieSlider = createSlider('calorie-slider', 0, calorieMax, 1, 0, calorieMax);
+  const carbsSlider = createSlider('carbs-slider', 0, carbMax, 1, 0, carbMax);
+  const sugarSlider = createSlider('sugar-slider', 0, sugarMax, 1, 0, sugarMax);
+  const proteinSlider = createSlider('protein-slider', 0, proteinMax, 1, 0, proteinMax);
 
   // initial chart 
   updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, proteinSlider);
@@ -163,10 +168,10 @@ async function initializeChartAndSliders(dataFiles) {
 
   // reset all events:
   d3.select('#reset-button').on('click', () => {
-    calorieSlider.noUiSlider.set([0, 2000]);
-    carbsSlider.noUiSlider.set([0, 200]);
-    sugarSlider.noUiSlider.set([0, 200]);
-    proteinSlider.noUiSlider.set([0, 200]);
+    calorieSlider.noUiSlider.set([0, calorieMax]);
+    carbsSlider.noUiSlider.set([0, carbMax]);
+    sugarSlider.noUiSlider.set([0, sugarMax]);
+    proteinSlider.noUiSlider.set([0, proteinMax]);
 
     genderSelect.property('value', 'both-mf');
     glucoseSelect.property('value', 'both-hl');
@@ -208,10 +213,10 @@ document.body.insertAdjacentHTML(
 )
   
 const allDataFiles = [
-    { name: '(M, High)',  file: 'data/male_high.csv',   gender: 'male',   glucose: 'high' },
-    { name: '(M, Low)',   file: 'data/male_low.csv',    gender: 'male',   glucose: 'low'  },
-    { name: '(F, High)',  file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
-    { name: '(F, Low)',   file: 'data/female_low.csv',  gender: 'female', glucose: 'low'  },
+    { name: '(M, High)', file: 'data/male_high.csv', gender: 'male',   glucose: 'high' },
+    { name: '(M, Low)', file: 'data/male_low.csv', gender: 'male',   glucose: 'low'  },
+    { name: '(F, High)', file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
+    { name: '(F, Low)', file: 'data/female_low.csv', gender: 'female', glucose: 'low'  },
 ];
   
 
