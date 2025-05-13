@@ -44,7 +44,7 @@ svg {
 
 /*tooltip for sliders*/
 .noUi-tooltip {
-    display: none;
+    display: block !important;
 }
 .noUi-target:hover .noUi-tooltip,
 .noUi-handle:hover .noUi-tooltip {
@@ -53,20 +53,31 @@ svg {
 
 /*make sliders away from each other*/
 .slider-container {
+    display: flex;
+    align-items: center;
     margin-left: 10px;
     margin-right: 10px;
-    margin-bottom: 30px;
+    margin-top: 40px;
+    margin-bottom: 40px;
     width: 100%;
 }
 .slider-label {
+    width: 120px;
     margin-bottom: 10px;
     font-weight: bold; 
-    display: block; 
 }
 
 svg {
     width: 100%; /* Scales to container */
     height: auto; /* Maintains aspect ratio */
+}
+
+.slider-wrapper {
+    flex-grow: 1;
+}
+
+.slider-wrapper > div {
+    width: 100%;
 }
 
 div.writeup {
