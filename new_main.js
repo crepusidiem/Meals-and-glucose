@@ -137,7 +137,11 @@ async function initializeChartAndSliders(dataFiles) {
   const allData = await loadData(dataFiles);
   dataSets = processData(allData);
   
-  const svg = d3.select('svg');
+  //const svg = d3.select('svg');
+  const width = 1000;
+  const height = 600;
+  const svg = d3
+        .select('#line-plot');
   // clear previous content
   svg.selectAll('*').remove(); 
 
