@@ -1,5 +1,6 @@
-// main.js
-// Utility to create a dual-handle slider
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
+
+// create a slider with min, max range 
 function createSlider(id, min, max, step, defaultMin, defaultMax) {
   const slider = document.getElementById(id);
   noUiSlider.create(slider, {
@@ -8,15 +9,13 @@ function createSlider(id, min, max, step, defaultMin, defaultMax) {
     range: { min, max },
     step,
     tooltips: [true, true],
-    format: {
-      to: v => parseFloat(v).toFixed(1),
-      from: v => parseFloat(v)
-    }
+    
   });
+
   return slider;
 }
 
-// Color‐scheme definitions (perceptually uniform)
+// set the color scheme for the lines (edited later)
 const colorSchemes = {
   Viridis: d3.interpolateViridis,
   Plasma:  d3.interpolatePlasma,

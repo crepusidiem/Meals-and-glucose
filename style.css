@@ -1,0 +1,19 @@
+.slider-container { 
+    margin: 15px 0; 
+}
+
+.slider-label { 
+    font-weight: bold; 
+    display: block; 
+    margin-bottom: 5px; 
+}
+
+#controls { 
+    max-width: 700px; 
+}
+    
+svg { 
+    margin-top: 20px; 
+    border: 1px solid #ccc; 
+}
+
