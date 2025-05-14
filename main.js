@@ -188,7 +188,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       group.classed('hidden', !isHidden);
 
       d3.select(this).select('text')
-        .style('opacity', isHidden ? 1 : 0);
+        .style('opacity', isHidden ? 1 : 0.5);
     });
 
   legendEnter.append('rect')

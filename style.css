@@ -113,3 +113,8 @@ h2.write_up {
     margin-top: 80px;
     margin-bottom: 30px;
 }
+
+#gender-scheme, #glucose-scheme {
+    display: inline-block;
+    margin-right: 20px;
+}
