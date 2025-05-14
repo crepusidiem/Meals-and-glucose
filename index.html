@@ -91,9 +91,20 @@
     <dd id="commit-glucose"></dd>
   </dl>
 
-  <h2 class="write_up"><a href='https://docs.google.com/document/d/1tAy2uyCQNEJ0aM9gQPaYl9J4B7G8yvgOhChkFj2vhJs/edit?tab=t.0'> Write Up </a></h2>
+  <h2 class="write_up"> Write Up </h2>
 
-
+  <p>
+    We focus on the BIG IDEAs Lab Glycemic Variability and Wearable Device Data dataset and aim to visualize the relationship between glucose level changes within one hour after consuming food. During our initial exploration, we picked one participant to draw visualization and found that the sugar in food seemed to be correlated with glucose changes over time. Motivated by this finding, we try to identify a more general trend in glucose level variation based on the nutrition content of food. 
+  </p>
+  <p>
+    We mainly use two datasets for each individual. The food_log database documents the food consumed by each participant, and the Dexcom dataset records glucose levels every 5 minutes throughout the experimental period. To prepare the data for visualization, we first examine the datasets for all 16 individuals. We remove participant #3 due to missing headers, and participant #7, 13, 15, 16 because the dates in their food_log and Dexcom data do not match. Then we use the Demographics dataset to categorize the remaining participants into four groups: male / female with high / low glucose level. Since an HbA1c level below 5.7 is considered normal, participants with values above this threshold are classified as having high glucose levels. 
+  </p>
+  <p>
+    Next, we perform some data aggregation to create a summary dataset for each filtered individual. Specifically, for each participant, we selected all rows from the Dexcom data that fell within the 1-hour window after a recorded meal. Then we concatenated the summary datasets according to the four defined categories, and combined them with the food nutrition data. The resulting dataset for each category has columns for the four nutrition values (sugar, proteins, carbohydrates, and calorie) and columns for glucose values for one hour after the meal in a 5-minutes interval, and each row represents a meal. 
+  </p>
+  <p>
+    After preparing the data, we design a line plot using d3 to show the mean glucose change for each of the four categories. At the top of the webpage, we create two dropdown menus that allow users to filter by gender and glucose level. Additionally, we implement four draggable sliders using noUiSlider, allowing users to select ranges for each nutrition component. The trends in glucose level also update based on the selection. Our goal with this design is to enable people to visualize potential glucose level change based on known nutrition values of a meal, helping individuals, especially those who are prediabetic, to gain insight into what should or should not eat, in order to better manage their glucose level. A button reset is provided to return the dropdown menu and nutrition range to default values. For on-plot interactive design, users can hover over the data points to view detailed information including category, time and glucose level for each individual. Also, the legend on the left-hand side is clickable, allowing users to change visibility of the corresponding line. We carefully select the color palette: categories for male are displayed in blue, females are red, and categories for high glucose are shown in darker colors compared to those with low glucose levels. 
+  </p>
   
 </body>
 </html>
