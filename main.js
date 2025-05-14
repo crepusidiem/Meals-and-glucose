@@ -2,7 +2,6 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 
 let dataSets;
 let yMin, yMax;
-let path_show = [1, 1, 1, 1];
 
 
 let sugarMax = 150;
