@@ -1,6 +1,6 @@
 // Responsive SVG sizing
 const svg = d3.select('svg');
-const margin = { top: 50, right: 100, bottom: 50, left: 50 };
+const margin = { top: 50, right: 190, bottom: 50, left: 50 };
 function resizeSvg() {
   const ctrlH = document.getElementById('controls').offsetHeight;
   const instrH = document.getElementById('instructions').offsetHeight;
@@ -13,10 +13,10 @@ resizeSvg();
 
 // Data files
 const allDataFiles = [
-  { name: 'Sample A (M, High)',  file: 'data/male_high.csv' },
-  { name: 'Sample B (M, Low)',   file: 'data/male_low.csv'  },
-  { name: 'Sample C (F, High)',  file: 'data/female_high.csv'},
-  { name: 'Sample D (F, Low)',   file: 'data/female_low.csv' }
+  { name: 'Male & High Glucose',  file: 'data/male_high.csv' },
+  { name: 'Male & Low Glucose',   file: 'data/male_low.csv'  },
+  { name: 'Female & High Glucose',  file: 'data/female_high.csv'},
+  { name: 'Female & Low Glucose',   file: 'data/female_low.csv' }
 ];
 
 function drawChart(files) {
@@ -122,11 +122,18 @@ function drawChart(files) {
       sCarb.set([0, maxCarb]);
       sSugar.set([0, maxSugar]);
       sProt.set([0, maxProt]);
+      // reset zoom
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+      // rebuild chart to restore all lines and legend opacities
+      update();
     });
 
     // Update
     function update() {
+      // ensure any hidden lines/circles are shown
+      chartBody.selectAll('.data-line').style('display', null);
+      chartBody.selectAll('.data-circle').style('display', null);
+
       const [c0, c1] = sCal.get().map(Number);
       const [cb0, cb1] = sCarb.get().map(Number);
       const [s0, s1] = sSugar.get().map(Number);
@@ -169,18 +176,24 @@ function drawChart(files) {
       circles.exit().remove();
       // Legend
       svg.selectAll('g.legend').remove();
-      const legend = svg.append('g').attr('class','legend').attr('transform',`translate(${width-margin.right+20},${margin.top})`);
+      const legend = svg.append('g').attr('class','legend').attr('transform',`translate(${width-margin.right+10},${margin.top})`);
       filtered.forEach((d,i) => {
-        const item = legend.append('g').attr('class','legend-item').attr('transform',`translate(0,${i*25})`)
-          .on('click', ()=>{
-            const selLine = chartBody.selectAll('.data-line').filter(l=>l.name===d.name);
-            const selCirc = chartBody.selectAll('.data-circle').filter(c=>c.name===d.name);
-            const visible = selLine.style('display') !== 'none';
-            selLine.style('display', visible?'none':null);
-            selCirc.style('display', visible?'none':null);
-          });
-        item.append('rect').attr('width',12).attr('height',12).attr('fill',color(i));
+        const item = legend.append('g').attr('class','legend-item').attr('transform',`translate(0,${i*25})`);
+        const rect = item.append('rect')
+          .attr('width',12)
+          .attr('height',12)
+          .attr('fill',color(i));
         item.append('text').attr('x',18).attr('y',10).text(d.name).attr('font-size','12px');
+        item.on('click', ()=>{
+          const selLine = chartBody.selectAll('.data-line').filter(l=>l.name===d.name);
+          const selCirc = chartBody.selectAll('.data-circle').filter(c=>c.name===d.name);
+          const visible = selLine.style('display') !== 'none';
+          selLine.style('display', visible?'none':null);
+          selCirc.style('display', visible?'none':null);
+          // adjust legend opacity
+          rect.style('opacity', visible?0.3:1);
+          item.select('text').style('opacity', visible?0.3:1);
+        });
       });
     }
 
