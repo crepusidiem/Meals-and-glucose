@@ -178,14 +178,14 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
     .attr('transform', (d, i) => `translate(0, ${i * 20})`)
     .style('cursor', 'pointer')
     .on('click', function(event, d) {
-      // Toggle visibility of group
+      // target the dataset being clicked
       const group = svg.selectAll('.data-group')
         .filter(g => g.name === d.name);
-
+      
+      // change the visibility for the clicked legend
       const isHidden = group.classed('hidden');
       group.classed('hidden', !isHidden);
 
-      // Dim legend item if hidden
       d3.select(this).select('text')
         .style('opacity', isHidden ? 1 : 0);
     });
