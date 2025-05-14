@@ -107,7 +107,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
   const enterG = groups.enter().append('g').attr('class', 'data-group');
   // const colorScale = d3.scaleOrdinal(d3.schemePaired);
   const colorScale = d3.scaleOrdinal()
-    .domain(['(M, High)', '(M, Low)', '(F, High)', '(F, Low)'])
+    .domain(['(Male, High glucose level)', '(Male, Low glucose level)', '(Female, High glucose level)', '(Female, Low glucose level)'])
     .range(['#014b72', '#1badfb', '#8b0404', '#f45252']);
   // draw paths and circles for each dataset
   enterG.merge(groups).each(function(d, i) {
@@ -122,7 +122,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       .merge(path)
       .attr('d', lineGen)
       .attr('fill', 'none')
-      .attr('stroke', colorScale(i))
+      .attr('stroke', colorScale(d.name))
       .attr('stroke-width', 2);
     path.exit().remove();
 
@@ -140,7 +140,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       .attr('r', 3)
       .attr('cx', pt => d3.scaleLinear().domain([0, 60]).range([40, +svg.attr('width') - 50])(pt.minute))
       .attr('cy', pt => y(pt.value))
-      .attr('fill', colorScale(i))
+      .attr('fill', colorScale(d.name))
       .on('mouseover', (e,d) => tooltip.style('opacity', 1).html(d.name + '<br>Min: ' + d.minute + '<br>Val: ' + d.value))
       .on('mousemove', e => tooltip.style('left', (e.pageX+10) + 'px').style('top', (e.pageY-10) + 'px'))
       .on('mouseout', () => tooltip.style('opacity', 0));
@@ -194,7 +194,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
   legendEnter.append('rect')
     .attr('width', 10)
     .attr('height', 10)
-    .attr('fill', (d, i) => colorScale(i));
+    .attr('fill', (d, i) => colorScale(d.name));
 
   legendEnter.append('text')
     .attr('x', 15)
