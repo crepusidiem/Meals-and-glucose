@@ -7,8 +7,11 @@ let carbMax = 460;
 let proteinMax = 130;
 let calorieMax = 3480;
 
+let select_cMin, select_cMax, select_cbMin, select_cbMax, select_sMin, select_sMax, select_pMin, select_pMax;
+
 // load all csv data files
 async function loadData(dataFiles) {
+
   const allFiles = await Promise.all(
     dataFiles.map(d =>
       d3.csv(d.file, d3.autoType).then(raw => ({ name: d.name, raw }))
@@ -56,10 +59,10 @@ function createSlider(id, min, max, step, defaultMin, defaultMax) {
 // update the chart based on slider values
 function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, proteinSlider) {
   // get the current values selected by the user
-  const [cMin,cMax]   = calorieSlider.noUiSlider.get().map(Number);
-  const [cbMin,cbMax] = carbsSlider.noUiSlider.get().map(Number);
-  const [sMin,sMax]   = sugarSlider.noUiSlider.get().map(Number);
-  const [pMin,pMax]   = proteinSlider.noUiSlider.get().map(Number);
+  let [cMin,cMax]   = calorieSlider.noUiSlider.get().map(Number);
+  let [cbMin,cbMax] = carbsSlider.noUiSlider.get().map(Number);
+  let [sMin,sMax]   = sugarSlider.noUiSlider.get().map(Number);
+  let [pMin,pMax]   = proteinSlider.noUiSlider.get().map(Number);
 
   // prepare filtered data based on selected slider values
   const seriesData = dataSets.map(ds => {
@@ -136,7 +139,6 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
 async function initializeChartAndSliders(dataFiles) {
   const allData = await loadData(dataFiles);
   dataSets = processData(allData);
-  
   //const svg = d3.select('svg');
   const width = 1000;
   const height = 600;
@@ -157,7 +159,6 @@ async function initializeChartAndSliders(dataFiles) {
 
   const y = d3.scaleLinear().range([H, 10]);
   svg.append('g').attr('class', 'y-axis').attr('transform', `translate(40,0)`);
-
   // create sliders based on extreme values for each nutrition 
   const calorieSlider = createSlider('calorie-slider', 0, calorieMax, 1, 0, calorieMax);
   const carbsSlider = createSlider('carbs-slider', 0, carbMax, 1, 0, carbMax);
@@ -238,7 +239,30 @@ function onFilterChange() {
     return genderOK && glucoseOK;
   });
 
+  let calorieSlider = document.getElementById("calorie-slider");
+  let carbsSlider = document.getElementById("carbs-slider");
+  let sugarSlider = document.getElementById("sugar-slider");
+  let proteinSlider = document.getElementById("protein-slider");
+
+  // save the slider values
+  const currentValues = {
+    calorie: calorieSlider.noUiSlider.get(),
+    carbs: carbsSlider.noUiSlider.get(),
+    sugar: sugarSlider.noUiSlider.get(),
+    protein: proteinSlider.noUiSlider.get()
+  };
+
+  [select_cMin,select_cMax]   = calorieSlider.noUiSlider.get().map(Number);
+  [select_cbMin,select_cbMax] = carbsSlider.noUiSlider.get().map(Number);
+  [select_sMin,select_sMax]   = sugarSlider.noUiSlider.get().map(Number);
+  [select_pMin,select_pMax]   = proteinSlider.noUiSlider.get().map(Number);
   drawChart(filtered);
+  setTimeout(() => {
+    calorieSlider.noUiSlider.set(currentValues.calorie);
+    carbsSlider.noUiSlider.set(currentValues.carbs);
+    sugarSlider.noUiSlider.set(currentValues.sugar);
+    proteinSlider.noUiSlider.set(currentValues.protein);
+  }, 50);
 }
 
 // Attach event listeners for filter changes
