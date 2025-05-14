@@ -78,3 +78,19 @@ svg {
   transition: opacity 0.2s;
 }
 
+/* slider style */
+.noUi-target {
+    background: linear-gradient(to right, #f5f5f5, #e0e0e0);
+    height: 12px;
+}
+  
+.noUi-connect {
+    background: linear-gradient(to right, #76c0fd, #011315); /* Blue gradient */
+}
+  
+.noUi-handle {
+    width: 10px;
+    height: 10px;
+    border: 3px solid #2196F3;
+    background: #fff;
+}

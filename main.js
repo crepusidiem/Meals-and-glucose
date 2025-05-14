@@ -1,3 +1,10 @@
+// Add a title to the page
+const pageTitle = document.createElement('h1');
+pageTitle.textContent = "How Does Food Intake Change Your Glucose Level?";
+pageTitle.style.textAlign = 'center';
+pageTitle.style.marginTop = '20px';
+document.body.insertBefore(pageTitle, document.body.firstChild);
+
 // Responsive SVG sizing
 const svg = d3.select('svg');
 const margin = { top: 50, right: 190, bottom: 60, left: 70 };
