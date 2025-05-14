@@ -189,6 +189,7 @@ function drawChart(files) {
         .attr('cx', d=>x(d.minute))
         .attr('cy', d=>y(d.value));
       circles.exit().remove();
+      
 
       svg.selectAll('g.legend').remove();
       const legend = svg.append('g').attr('class','legend').attr('transform',`translate(${width-margin.right+10},${margin.top})`);
