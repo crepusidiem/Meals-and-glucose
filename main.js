@@ -105,8 +105,10 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
   const groups = svg.selectAll('.data-group').data(seriesData, d => d.name);
   // create new <g class = "data-group"> for data points in seriesData
   const enterG = groups.enter().append('g').attr('class', 'data-group');
-  const colorScale = d3.scaleOrdinal(d3.schemePaired);
-
+  // const colorScale = d3.scaleOrdinal(d3.schemePaired);
+  const colorScale = d3.scaleOrdinal()
+    .domain(['(M, High)', '(M, Low)', '(F, High)', '(F, Low)'])
+    .range(['darkblue', 'lightblue', 'darkred', 'lightcoral']);
   // draw paths and circles for each dataset
   enterG.merge(groups).each(function(d, i) {
     const lineGen = d3.line()
