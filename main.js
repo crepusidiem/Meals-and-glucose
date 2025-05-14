@@ -1,266 +1,238 @@
-// main.js
-// Utility to create a dual-handle slider
-function createSlider(id, min, max, step, defaultMin, defaultMax) {
-  const slider = document.getElementById(id);
-  if (slider.noUiSlider) {               // ← destroy old slider if present
-    slider.noUiSlider.destroy();
-  }
-  noUiSlider.create(slider, {
-    start: [defaultMin, defaultMax],
-    connect: true,
-    range: { min, max },
-    step,
-    tooltips: [true, true],
-    format: {
-      to: v => parseFloat(v).toFixed(1),
-      from: v => parseFloat(v)
-    }
-  });
-  return slider;
-}
-
-// Color‐scheme definitions (perceptually uniform)
-const colorSchemes = {
-  Viridis: d3.interpolateViridis,
-  Plasma:  d3.interpolatePlasma,
-  Inferno: d3.interpolateInferno,
-  Magma:   d3.interpolateMagma
-};
-
-// Initialize chart with multiple CSV files
-function initializeChartAndSliders(dataFiles) {
-  // Load all datasets
-  const promises = dataFiles.map(d =>
-    d3.csv(d.file, d3.autoType).then(raw => ({ name: d.name, raw }))
-  );
-
-  Promise.all(promises).then(allData => {
-    // Common setup
-    const times = d3.range(0, 61, 5).map(String);
-    const dataSets = allData.map(({ name, raw }) => ({
-      name,
-      meta: raw.map(d => ({ calorie: d.calorie, total_carb: d.total_carb, sugar: d.sugar, protein: d.protein })),
-      seriesRaw: raw.map(d => times.map(t => ({ minute: +t, value: d[t] })).filter(pt => pt.value != null))
-    }));
-
-    const svg = d3.select('svg');
-    const W = +svg.attr('width') - 50;
-    const H = +svg.attr('height') - 50;
-
-    const x = d3.scaleLinear().domain([0, 60]).range([40, W]);
-    let y = d3.scaleLinear().range([H, 10]);
-
-    // Axes groups
-    svg.append('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${H})`)
-      .call(d3.axisBottom(x));
-
-    svg.append('g')
-      .attr('class', 'y-axis')
-      .attr('transform', `translate(40,0)`);
-
-    // Controls
-    const calorieSlider = createSlider('calorie-slider', 0, 2000, 1, 0, 2000);
-    const carbsSlider   = createSlider('carbs-slider',   0, 200,  1, 0, 200);
-    const sugarSlider   = createSlider('sugar-slider',   0, 200,  1, 0, 200);
-    const proteinSlider = createSlider('protein-slider', 0, 200,  1, 0, 200);
-    const colorSelect   = d3.select('#color-select');
-
-    // Smoothing line generator
-    const lineGen = d3.line()
-      .x(d => x(d.minute))
-      .y(d => y(d.value))
-      .curve(d3.curveBasis);
-
-    function updateChart() {
-      // Get filter extents
-      const [cMin,cMax]   = calorieSlider.noUiSlider.get().map(Number);
-      const [cbMin,cbMax] = carbsSlider.noUiSlider.get().map(Number);
-      const [sMin,sMax]   = sugarSlider.noUiSlider.get().map(Number);
-      const [pMin,pMax]   = proteinSlider.noUiSlider.get().map(Number);
-
-      // Prepare series data per dataset
-      const seriesData = dataSets.map(ds => {
-        // Filter rows
-        const filteredIdx = ds.meta
-          .map((m,i) => (m.calorie>=cMin && m.calorie<=cMax && m.total_carb>=cbMin && m.total_carb<=cbMax && m.sugar>=sMin && m.sugar<=sMax && m.protein>=pMin && m.protein<=pMax) ? i : null)
-          .filter(i => i !== null);
-
-        // Aggregate per minute
-        const aggregated = times.map(t => {
-          const vals = filteredIdx.map(i => {
-            const pt = ds.seriesRaw[i].find(p => p.minute === +t);
-            return pt ? pt.value : null;
-          }).filter(v => v != null);
-          return { minute: +t, value: d3.mean(vals) };
-        }).filter(pt => pt.value != null);
-
-        return { name: ds.name, series: aggregated };
-      });
-
-      // Recompute y-domain based on filtered data extremes
-      const allValues = seriesData.flatMap(d => d.series.map(pt => pt.value));
-      const [yMin, yMax] = d3.extent(allValues);
-      y.domain([yMin, yMax]).nice();
-
-      // Update Y axis
-      svg.select('.y-axis').call(d3.axisLeft(y));
-
-      // Color palette for datasets
-      const schemeFn = colorSchemes[colorSelect.node().value];
-      const colorScale = d3.scaleSequential(schemeFn).domain([0, seriesData.length - 1 || 1]);
-
-      // DATA JOIN for groups
-      const groups = svg.selectAll('.data-group')
-        .data(seriesData, d => d.name);
-      const enterG = groups.enter().append('g').attr('class', 'data-group');
-
-      // Draw/update each dataset
-      enterG.merge(groups).each(function(d,i) {
-        // Path
-        const path = d3.select(this).selectAll('path').data([d.series]);
-        path.enter().append('path')
-          .merge(path)
-          .attr('d', lineGen)
-          .attr('fill', 'none')
-          .attr('stroke', colorScale(i))
-          .attr('stroke-width', 2);
-        path.exit().remove();
-
-        // Circles
-        const circs = d3.select(this).selectAll('circle').data(d.series);
-        circs.enter().append('circle').attr('r',3)
-          .merge(circs)
-          .attr('cx', pt => x(pt.minute))
-          .attr('cy', pt => y(pt.value))
-          .attr('fill', colorScale(i));
-        circs.exit().remove();
-      });
-
-      groups.exit().remove();
-    }
-
-    // Event bindings
-    [calorieSlider, carbsSlider, sugarSlider, proteinSlider].forEach(s => s.noUiSlider.on('update', updateChart));
-    colorSelect.on('change', updateChart);
-    d3.select('#reset-button').on('click', () => {
-      calorieSlider.noUiSlider.set([0,2000]);
-      carbsSlider.noUiSlider.set([0,200]);
-      sugarSlider.noUiSlider.set([0,200]);
-      proteinSlider.noUiSlider.set([0,200]);
-      colorSelect.property('value','Viridis');
-      updateChart();
-    });
-
-    // Initial draw
-    updateChart();
-  });
-}
-
-
-
-document.body.insertAdjacentHTML(
-  'afterbegin',
-  `
-  <label id="gender-scheme">
-  Gender:
-  <select id="set-gender">
-    <option value="both-mf">Both</option>
-    <option value="male">Male</option>
-    <option value="female">Female</option>
-  </select>
-  </label>`,
-)
-document.body.insertAdjacentHTML(
-  'afterbegin',
-  `
-  <label id="glucose-scheme">
-  Glucose:
-  <select id="set-glucose">
-    <option value="both-hl">Both</option>
-    <option value="high">High</option>
-    <option value="low">Low</option>
-  </select>
-  </label>`,
-)
-
-const allDataFiles = [
-  { name: 'Sample A (M, High)',  file: 'data/male_high.csv',   gender: 'male',   glucose: 'high' },
-  { name: 'Sample B (M, Low)',   file: 'data/male_low.csv',    gender: 'male',   glucose: 'low'  },
-  { name: 'Sample C (F, High)',  file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
-  { name: 'Sample D (F, Low)',   file: 'data/female_low.csv',  gender: 'female', glucose: 'low'  },
-  // … any others …
-];
-
-// Convenience: container SVG selection
 const svg = d3.select('svg');
+    function resizeSvg() {
+      const ctrl = document.getElementById('controls').offsetHeight;
+      const instr = document.getElementById('instructions').offsetHeight;
+      svg.attr('width', window.innerWidth)
+         .attr('height', window.innerHeight - ctrl - instr);
+    }
+    window.addEventListener('resize', resizeSvg);
+    resizeSvg();
 
-// This function drives loading + drawing for whatever list you pass in
-function drawChart(dataFiles) {
-  // first, clear out anything inside the <svg>
-  svg.selectAll('*').remove();
+    // Data files
+    const allDataFiles = [
+      { name: 'Sample A (M, High)',  file: 'data/male_high.csv',   gender: 'male',   glucose: 'high' },
+      { name: 'Sample B (M, Low)',   file: 'data/male_low.csv',    gender: 'male',   glucose: 'low'  },
+      { name: 'Sample C (F, High)',  file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
+      { name: 'Sample D (F, Low)',   file: 'data/female_low.csv',  gender: 'female', glucose: 'low'  }
+    ];
 
-  initializeChartAndSliders(dataFiles);
-}
+    let currentDataFiles = [];
 
-// Initial draw with everything
-drawChart(allDataFiles);
+    // Main draw function
+    function drawChart(dataFiles) {
+      currentDataFiles = dataFiles;
+      svg.selectAll('*').remove();
+      initialize(dataFiles);
+    }
 
-// Grab the two new selectors
-const genderSelect  = d3.select('#set-gender');
-const glucoseSelect = d3.select('#set-glucose');
+    // Initialize controls and chart
+    function initialize(dataFiles) {
+      // Tooltip
+      let tooltip = d3.select('body').select('div.tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select('body').append('div').attr('class', 'tooltip');
+      }
 
-function onFilterChange() {
-  const gender  = genderSelect.node().value;   // "male", "female", or "both-mf"
-  const glucose = glucoseSelect.node().value;  // "high", "low", or "both-hl"
+      // Filters
+      const filtersHtml = `
+        <label style="margin-right:1rem;">
+          Gender:
+          <select id="set-gender">
+            <option value="both-mf">Both</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </label>
+        <label>
+          Glucose:
+          <select id="set-glucose">
+            <option value="both-hl">Both</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+      `;
+      d3.select('#controls').insert('div', ':first-child').html(filtersHtml);
 
-  const filtered = allDataFiles.filter(d => {
-    const genderOK  = gender  === 'both-mf' ? true : d.gender  === gender;
-    const glucoseOK = glucose === 'both-hl'? true : d.glucose === glucose;
-    return genderOK && glucoseOK;
-  });
+      const genderSelect  = d3.select('#set-gender');
+      const glucoseSelect = d3.select('#set-glucose');
 
-  drawChart(filtered);
-}
+      genderSelect.on('change', () => filter());
+      glucoseSelect.on('change', () => filter());
 
-// Attach listeners so any change re-draws
-genderSelect.on('change', onFilterChange);
-glucoseSelect.on('change', onFilterChange);
+      function filter() {
+        const g = genderSelect.node().value;
+        const gl = glucoseSelect.node().value;
+        const filt = allDataFiles.filter(d => {
+          const ok1 = g === 'both-mf' ? true : d.gender === g;
+          const ok2 = gl === 'both-hl'  ? true : d.glucose === gl;
+          return ok1 && ok2;
+        });
+        drawChart(filt);
+      }
 
-// let gender='both-mf';
-// let glucose='both-hl';
-// let genderselect = document.querySelector('select#set-gender');
-// let glucoseselect = document.querySelector('select#set-glucose');
+      // Load CSVs
+      Promise.all(dataFiles.map(d =>
+        d3.csv(d.file, d3.autoType).then(raw => ({ name: d.name, raw }))
+      )).then(allData => {
+        // Compute maxes
+        const flats = cols => allData.flatMap(ds => ds.raw.map(r => r[cols]));
+        const maxCal  = d3.max(flats('calorie')),
+              maxCarb = d3.max(flats('total_carb')),
+              maxSug  = d3.max(flats('sugar')),
+              maxProt = d3.max(flats('protein'));
 
-// genderselect.addEventListener('input', function(event) {
-//   // Handle
-//   gender = event.target.value;
-//   if (gender == 'both-mf') {
-//     if (glucose == 'both-hl') {
-//       initializeChartAndSliders([
-//         { name: 'Female High', file: 'data/female_high.csv' },
-//         { name: 'Female Low',  file: 'data/female_low.csv' },
-//         { name: 'Male High',   file: 'data/male_high.csv' },
-//         { name: 'Male Low',   file: 'data/male_low.csv' }
-//       ]);
-//     } else if (glucose == 'high') {
-//       initializeChartAndSliders([
-//         { name: 'Female High', file: 'data/female_high.csv' },
-//         { name: 'Male High',   file: 'data/male_high.csv' },
-//     ]);
-//   }
-//   }
-// });
-// glucoseselect.addEventListener('input', function(event) {
-//   // Handle
-//   glucose = event.target.value;
-// });
-// Pass an array of datasets with name and file path
-initializeChartAndSliders([
-  { name: 'Female High', file: 'data/female_high.csv' },
-  { name: 'Female Low',  file: 'data/female_low.csv' },
-  { name: 'Male High',   file: 'data/male_high.csv' },
-  { name: 'Male Low',   file: 'data/male_low.csv' }
-]);
+        // Prepare data
+        const times = d3.range(0,61,5).map(String);
+        const dataSets = allData.map(({ name, raw }) => ({
+          name,
+          meta: raw,
+          seriesRaw: raw.map(d =>
+            times.map(t => ({ minute:+t, value:d[t] })).filter(pt => pt.value != null)
+          )
+        }));
 
+        // Scales and axes
+        const width  = +svg.attr('width'),
+              height = +svg.attr('height'),
+              W      = width - 50,
+              H      = height - 50;
+        const x = d3.scaleLinear().domain([0,60]).range([40,W]);
+        const y = d3.scaleLinear().range([H,10]);
+
+        svg.append('g')
+           .attr('transform','translate(0,'+H+')')
+           .call(d3.axisBottom(x))
+           .append('text')
+           .attr('x',W/2)
+           .attr('y',35)
+           .attr('fill','#000')
+           .text('Minutes After Meal');
+
+        svg.append('g')
+           .attr('transform','translate(40,0)')
+           .call(d3.axisLeft(y))
+           .append('text')
+           .attr('transform','rotate(-90)')
+           .attr('x',-H/2)
+           .attr('y',-35)
+           .attr('fill','#000')
+           .text('Δ Glucose Level (mg/dL)');
+
+        // Zoom behavior
+        const zoom = d3.zoom()
+          .scaleExtent([1,10])
+          .translateExtent([[0,0],[width,height]])
+          .extent([[0,0],[width,height]])
+          .on('zoom', event => {
+            const nx = event.transform.rescaleX(x);
+            const ny = event.transform.rescaleY(y);
+            svg.select('g.x-axis').call(d3.axisBottom(nx));
+            svg.select('g.y-axis').call(d3.axisLeft(ny));
+            svg.selectAll('.data-group path')
+               .attr('d', d3.line()
+                 .x(pt => nx(pt.minute))
+                 .y(pt => ny(pt.value))
+               );
+            svg.selectAll('.data-group circle')
+               .attr('cx', pt => nx(pt.minute))
+               .attr('cy', pt => ny(pt.value));
+          });
+        svg.call(zoom);
+
+        // Sliders
+        function makeSlider(id,mn,mx) {
+          const el = document.getElementById(id);
+          if (el.noUiSlider) el.noUiSlider.destroy();
+          noUiSlider.create(el, {
+            start:[0,mx], connect:true,
+            range:{ min:mn, max:mx }, step:1,
+            tooltips:[true,true],
+            format:{ to:v=>v.toFixed(1), from:v=>+v }
+          });
+          return el.noUiSlider;
+        }
+        const sCal = makeSlider('calorie-slider',0,maxCal),
+              sCarb= makeSlider('carbs-slider',0,maxCarb),
+              sSug = makeSlider('sugar-slider',0,maxSug),
+              sProt= makeSlider('protein-slider',0,maxProt);
+
+        // Line generator
+        const lineGen = d3.line().x(d=>x(d.minute)).y(d=>y(d.value)).curve(d3.curveBasis);
+
+        // Update chart
+        function update() {
+          const [c0,c1]=sCal.get().map(Number), [cb0,cb1]=sCarb.get().map(Number);
+          const [s0,s1]=sSug.get().map(Number), [p0,p1]=sProt.get().map(Number);
+          const seriesData = dataSets.map(ds => {
+            const idx = ds.meta.map((m,i) => (m.calorie>=c0&&m.calorie<=c1&&m.total_carb>=cb0&&m.total_carb<=cb1&&m.sugar>=s0&&m.sugar<=s1&&m.protein>=p0&&m.protein<=p1)?i:null).filter(i=>i!=null);
+            const agg = times.map(t=>({ minute:+t, value:d3.mean(idx.map(i=>ds.seriesRaw[i].find(pt=>pt.minute===+t)?.value).filter(v=>v!=null)) })).filter(d=>d.value!=null);
+            return { name:ds.name, series:agg };
+          }).filter(d=>d.series.length);
+
+          y.domain(d3.extent(seriesData.flatMap(d=>d.series.map(pt=>pt.value)))).nice();
+          svg.select('g.y-axis').call(d3.axisLeft(y));
+
+          const color = d3.scaleSequential(d3.interpolateViridis).domain([0,seriesData.length-1||1]);
+
+          const groups = svg.selectAll('.data-group').data(seriesData, d=>d.name);
+          groups.exit().remove();
+          const ge = groups.enter().append('g').attr('class','data-group');
+
+          ge.merge(groups).each(function(d,i){
+            // path
+            const p = d3.select(this).selectAll('path').data([d.series]);
+            p.enter().append('path').merge(p)
+              .attr('d', lineGen)
+              .attr('fill','none')
+              .attr('stroke', color(i))
+              .attr('stroke-width',2);
+            p.exit().remove();
+            // circles
+            const cs = d3.select(this).selectAll('circle').data(d.series);
+            cs.enter().append('circle').merge(cs)
+              .attr('r',3)
+              .attr('cx',pt=>x(pt.minute))
+              .attr('cy',pt=>y(pt.value))
+              .attr('fill',color(i))
+              .on('mouseover',(e,pt)=>tooltip.style('opacity',1).html(d.name+'<br>Min:'+pt.minute+'<br>Val:'+pt.value))
+              .on('mousemove',e=>tooltip.style('left',e.pageX+5+'px').style('top',e.pageY-5+'px'))
+              .on('mouseout',()=>tooltip.style('opacity',0));
+            cs.exit().remove();
+          });
+
+          // legend
+          svg.selectAll('.legend').remove();
+          const legend = svg.append('g').attr('class','legend').attr('transform','translate('+(W-120)+',20)');
+          seriesData.forEach((d,i)=>{
+            const item = legend.append('g').attr('class','legend-item').attr('transform','translate(0,'+i*20+')')
+              .on('click',function(){
+                const vis = d3.selectAll('.data-group').filter(g=>g.name===d.name)
+                  .style('display', function(){ return d3.select(this).style('display')==='none'?'block':'none'; });
+              });
+            item.append('rect').attr('width',10).attr('height',10).attr('fill',color(i));
+            item.append('text').attr('x',15).attr('y',10).text(d.name).attr('font-size','12px');
+          });
+        }
+
+        [sCal,sCarb,sSug,sProt].forEach(s=>s.on('update', update));
+        d3.select('#reset-button').on('click',()=>{
+          sCal.set([0,maxCal]); sCarb.set([0,maxCarb]); sSug.set([0,maxSug]); sProt.set([0,maxProt]);
+          genderSelect.property('value','both-mf'); glucoseSelect.property('value','both-hl');
+          drawChart(allDataFiles);
+        });
+
+        // Title
+        svg.append('text')
+           .attr('x',width/2)
+           .attr('y',20)
+           .attr('text-anchor','middle')
+           .attr('font-size','16px')
+           .attr('font-weight','bold')
+           .text('Glucose Change vs. Time After Meal');
+
+        update();
+      });
+    }
+
+    drawChart(allDataFiles);
