@@ -279,8 +279,8 @@ function drawChart(dataFiles) {
 }
 
 // create options for gender and glucose
-document.body.insertAdjacentHTML(
-    'afterbegin',
+document.getElementById('team-member').insertAdjacentHTML(
+    'afterend',
     `
     <label id="gender-scheme">
     Gender:
@@ -292,8 +292,8 @@ document.body.insertAdjacentHTML(
     </label>`,
 )
 
-document.body.insertAdjacentHTML(
-    'afterbegin',
+document.getElementById('team-member').insertAdjacentHTML(
+    'afterend',
     `
     <label id="glucose-scheme">
     Glucose:
