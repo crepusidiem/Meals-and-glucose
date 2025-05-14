@@ -7,7 +7,7 @@ let carbMax = 460;
 let proteinMax = 130;
 let calorieMax = 3480;
 
-let select_cMin, select_cMax, select_cbMin, select_cbMax, select_sMin, select_sMax, select_pMin, select_pMax;
+
 
 // load all csv data files
 async function loadData(dataFiles) {
@@ -59,10 +59,10 @@ function createSlider(id, min, max, step, defaultMin, defaultMax) {
 // update the chart based on slider values
 function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, proteinSlider) {
   // get the current values selected by the user
-  let [cMin,cMax]   = calorieSlider.noUiSlider.get().map(Number);
+  let [cMin,cMax] = calorieSlider.noUiSlider.get().map(Number);
   let [cbMin,cbMax] = carbsSlider.noUiSlider.get().map(Number);
-  let [sMin,sMax]   = sugarSlider.noUiSlider.get().map(Number);
-  let [pMin,pMax]   = proteinSlider.noUiSlider.get().map(Number);
+  let [sMin,sMax] = sugarSlider.noUiSlider.get().map(Number);
+  let [pMin,pMax] = proteinSlider.noUiSlider.get().map(Number);
 
   // prepare filtered data based on selected slider values
   const seriesData = dataSets.map(ds => {
@@ -79,7 +79,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
                 m.protein <= pMax) ? i : null)
       .filter(i => i !== null);
 
-    // aggregate per minute for each dataset
+    // aggregate glucose value per minute for each dataset
     const aggregated = d3.range(0, 61, 5).map(t => {
       const vals = filteredIdx.map(i => {
         const pt = ds.seriesRaw[i].find(p => p.minute === +t);
@@ -181,10 +181,9 @@ async function initializeChartAndSliders(dataFiles) {
   const allData = await loadData(dataFiles);
   dataSets = processData(allData);
   //const svg = d3.select('svg');
-  const width = 1000;
-  const height = 600;
-  const svg = d3
-        .select('#line-plot');
+  // const width = 1000;
+  // const height = 600;
+  const svg = d3.select('#line-plot');
   // clear previous content
   svg.selectAll('*').remove(); 
 
@@ -205,6 +204,7 @@ async function initializeChartAndSliders(dataFiles) {
 
   const y = d3.scaleLinear().range([H, 10]);
   svg.append('g').attr('class', 'y-axis').attr('transform', `translate(40,0)`);
+
   // create sliders based on extreme values for each nutrition 
   const calorieSlider = createSlider('calorie-slider', 0, calorieMax, 1, 0, calorieMax);
   const carbsSlider = createSlider('carbs-slider', 0, carbMax, 1, 0, carbMax);
@@ -214,7 +214,7 @@ async function initializeChartAndSliders(dataFiles) {
   // initial chart 
   updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, proteinSlider);
 
-  // add event listener to each of the sliders
+  // add event listener to each of the sliders when selecting ranges on the sliders
   [calorieSlider, carbsSlider, sugarSlider, proteinSlider].forEach(s => s.noUiSlider.on('update', () => updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, proteinSlider)));
 
   // reset all events:
@@ -297,12 +297,9 @@ function onFilterChange() {
     sugar: sugarSlider.noUiSlider.get(),
     protein: proteinSlider.noUiSlider.get()
   };
-
-  [select_cMin,select_cMax]   = calorieSlider.noUiSlider.get().map(Number);
-  [select_cbMin,select_cbMax] = carbsSlider.noUiSlider.get().map(Number);
-  [select_sMin,select_sMax]   = sugarSlider.noUiSlider.get().map(Number);
-  [select_pMin,select_pMax]   = proteinSlider.noUiSlider.get().map(Number);
+  
   drawChart(filtered);
+
   //set the value after 50 ms.
   setTimeout(() => {
     calorieSlider.noUiSlider.set(currentValues.calorie);
