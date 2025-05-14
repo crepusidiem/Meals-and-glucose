@@ -99,3 +99,7 @@ div.writeup {
 circle {
     pointer-events: all; /* Ensures circles capture mouse events */
 }
+
+.hidden {
+    display: none;
+}

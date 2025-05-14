@@ -2,6 +2,8 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 
 let dataSets;
 let yMin, yMax;
+let path_show = [1, 1, 1, 1];
+
 
 let sugarMax = 150;
 let carbMax = 460;
@@ -157,6 +159,50 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
   });
 
   groups.exit().remove();
+
+  // create or select legend container
+  let legend = svg.select('.legend');
+  if (legend.empty()) {
+    legend = svg
+          .append('g')
+          .attr('class', 'legend')
+          .attr('transform', 'translate(50, 10)');
+  }
+
+  const legendItems = legend.selectAll('.legend-item').data(seriesData, d => d.name);
+
+  // update the visibility of the line 
+  const legendEnter = legendItems.enter()
+    .append('g')
+    .attr('class', 'legend-item')
+    .attr('transform', (d, i) => `translate(0, ${i * 20})`)
+    .style('cursor', 'pointer')
+    .on('click', function(event, d) {
+      // Toggle visibility of group
+      const group = svg.selectAll('.data-group')
+        .filter(g => g.name === d.name);
+
+      const isHidden = group.classed('hidden');
+      group.classed('hidden', !isHidden);
+
+      // Dim legend item if hidden
+      d3.select(this).select('text')
+        .style('opacity', isHidden ? 1 : 0);
+    });
+
+  legendEnter.append('rect')
+    .attr('width', 10)
+    .attr('height', 10)
+    .attr('fill', (d, i) => colorScale(i));
+
+  legendEnter.append('text')
+    .attr('x', 15)
+    .attr('y', 8)
+    .text(d => d.name)
+    .style('font-size', '12px')
+    .style('alignment-baseline', 'middle');
+
+  legendItems.exit().remove();
 }
 
 function renderTooltipContent(commit) {
