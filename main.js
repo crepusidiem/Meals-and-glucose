@@ -1,6 +1,7 @@
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 
 let dataSets;
+let yMin, yMax;
 
 let sugarMax = 150;
 let carbMax = 460;
@@ -88,12 +89,12 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       return { minute: +t, value: d3.mean(vals) };
     }).filter(pt => pt.value != null);
 
-    return { name: ds.name, series: aggregated };
+    return { name: ds.name, series: aggregated.map(pt => ({ ...pt, name: ds.name })) };
   });
 
   // recompute y-domain based on filtered data
   const allValues = seriesData.flatMap(d => d.series.map(pt => pt.value));
-  const [yMin, yMax] = d3.extent(allValues);
+  [yMin, yMax] = d3.extent(allValues);
   const y = d3.scaleLinear().domain([yMin, yMax]).nice().range([+svg.attr('height') - 50, 10]);
 
   // update y-axis 
@@ -123,14 +124,17 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
     path.exit().remove();
 
     // circles
-    const circs = d3.select(this).selectAll('circle').data(d.series);
+    const circles = d3.select(this).selectAll('circle').data(d.series);
 
     let tooltip = d3.select('body').select('div.tooltip');
       if (tooltip.empty()) {
         tooltip = d3.select('body').append('div').attr('class', 'tooltip');
     }
-    circs.enter().append('circle').attr('r', 3)
-      .merge(circs)
+
+    circles.enter()
+      .append('circle')
+      .merge(circles)
+      .attr('r', 3)
       .attr('cx', pt => d3.scaleLinear().domain([0, 60]).range([40, +svg.attr('width') - 50])(pt.minute))
       .attr('cy', pt => y(pt.value))
       .attr('fill', colorScale(i))
@@ -149,7 +153,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       //             //updateTooltipVisibility(false);
       //             console.log('mouseleave');
       // });
-    circs.exit().remove();
+    circles.exit().remove();
   });
 
   groups.exit().remove();
@@ -190,20 +194,32 @@ async function initializeChartAndSliders(dataFiles) {
   const W = +svg.attr('width') - 50;
   const H = +svg.attr('height') - 50;
 
-  // render axis
+  // render axis and add label
   const x = d3.scaleLinear().domain([0, 60]).range([40, W]);
   svg.append('g')
-           .attr('transform', 'translate(0,' + H + ')')
-           .call(d3.axisBottom(x).ticks(6))
-           .append('text')
-           .attr('x', W/2)
-           .attr('y', 40)
-           .attr('fill', '#333')
-           .attr('font-size', '14px')
-           .text('Minutes After Meal');
+    .attr('transform', 'translate(0,' + H + ')')
+    .call(d3.axisBottom(x).ticks(6))
+    .append('text')
+    .attr('x', W/2)
+    .attr('y', 40)
+    .attr('fill', '#333')
+    .attr('font-size', '14px')
+    .text('Minutes After Meal');
 
-  const y = d3.scaleLinear().range([H, 10]);
-  svg.append('g').attr('class', 'y-axis').attr('transform', `translate(40,0)`);
+
+
+  const y = d3.scaleLinear().domain([yMin, yMax]).range([H, 10]);
+  svg.append('g')
+    .attr('class', 'y-axis')
+    .attr('transform', `translate(40,0)`)
+    .call(d3.axisLeft(y))
+    .append('text')
+    .attr('transform', `rotate(-90)`)
+    .attr('x', -H/2+50)
+    .attr('y', -40)
+    .attr('fill', '#333')
+    .attr('font-size', '14px')
+    .text('Glucose Value (mg/dL)');
 
   // create sliders based on extreme values for each nutrition 
   const calorieSlider = createSlider('calorie-slider', 0, calorieMax, 1, 0, calorieMax);
@@ -264,10 +280,10 @@ document.body.insertAdjacentHTML(
 )
   
 const allDataFiles = [
-    { name: '(M, High)', file: 'data/male_high.csv', gender: 'male',   glucose: 'high' },
-    { name: '(M, Low)', file: 'data/male_low.csv', gender: 'male',   glucose: 'low'  },
-    { name: '(F, High)', file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
-    { name: '(F, Low)', file: 'data/female_low.csv', gender: 'female', glucose: 'low'  },
+    { name: '(Male, High glucose level)', file: 'data/male_high.csv', gender: 'male', glucose: 'high' },
+    { name: '(Male, Low glucose level)', file: 'data/male_low.csv', gender: 'male', glucose: 'low'  },
+    { name: '(Female, High glucose level)', file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
+    { name: '(Female, Low glucose level)', file: 'data/female_low.csv', gender: 'female', glucose: 'low'  },
 ];
   
 
@@ -297,7 +313,7 @@ function onFilterChange() {
     sugar: sugarSlider.noUiSlider.get(),
     protein: proteinSlider.noUiSlider.get()
   };
-  
+
   drawChart(filtered);
 
   //set the value after 50 ms.
