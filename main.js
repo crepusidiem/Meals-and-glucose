@@ -1,31 +1,31 @@
-const svg = d3.select('svg');
+    // Responsive SVG sizing
+    const svg = d3.select('svg');
     function resizeSvg() {
-      const ctrl = document.getElementById('controls').offsetHeight;
-      const instr = document.getElementById('instructions').offsetHeight;
-      svg.attr('width', window.innerWidth)
-         .attr('height', window.innerHeight - ctrl - instr);
+      const ctrlH = document.getElementById('controls').offsetHeight;
+      const instrH = document.getElementById('instructions').offsetHeight;
+      svg
+        .attr('width', window.innerWidth * 0.9)
+        .attr('height', window.innerHeight - ctrlH - instrH - 40);
     }
     window.addEventListener('resize', resizeSvg);
     resizeSvg();
 
-    // Data files
+    // Data files (unchanged)
     const allDataFiles = [
-      { name: 'Sample A (M, High)',  file: 'data/male_high.csv',   gender: 'male',   glucose: 'high' },
-      { name: 'Sample B (M, Low)',   file: 'data/male_low.csv',    gender: 'male',   glucose: 'low'  },
-      { name: 'Sample C (F, High)',  file: 'data/female_high.csv', gender: 'female', glucose: 'high' },
-      { name: 'Sample D (F, Low)',   file: 'data/female_low.csv',  gender: 'female', glucose: 'low'  }
+      { name: 'Sample A (M, High)',  file: 'data/male_high.csv' },
+      { name: 'Sample B (M, Low)',   file: 'data/male_low.csv' },
+      { name: 'Sample C (F, High)',  file: 'data/female_high.csv' },
+      { name: 'Sample D (F, Low)',   file: 'data/female_low.csv' }
     ];
 
     let currentDataFiles = [];
 
-    // Main draw function
     function drawChart(dataFiles) {
       currentDataFiles = dataFiles;
       svg.selectAll('*').remove();
       initialize(dataFiles);
     }
 
-    // Initialize controls and chart
     function initialize(dataFiles) {
       // Tooltip
       let tooltip = d3.select('body').select('div.tooltip');
@@ -33,203 +33,180 @@ const svg = d3.select('svg');
         tooltip = d3.select('body').append('div').attr('class', 'tooltip');
       }
 
-      // Filters
-      const filtersHtml = `
-        <label style="margin-right:1rem;">
-          Gender:
-          <select id="set-gender">
-            <option value="both-mf">Both</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </label>
-        <label>
-          Glucose:
-          <select id="set-glucose">
-            <option value="both-hl">Both</option>
-            <option value="high">High</option>
-            <option value="low">Low</option>
-          </select>
-        </label>
-      `;
-      d3.select('#controls').insert('div', ':first-child').html(filtersHtml);
-
-      const genderSelect  = d3.select('#set-gender');
-      const glucoseSelect = d3.select('#set-glucose');
-
-      genderSelect.on('change', () => filter());
-      glucoseSelect.on('change', () => filter());
-
-      function filter() {
-        const g = genderSelect.node().value;
-        const gl = glucoseSelect.node().value;
-        const filt = allDataFiles.filter(d => {
-          const ok1 = g === 'both-mf' ? true : d.gender === g;
-          const ok2 = gl === 'both-hl'  ? true : d.glucose === gl;
-          return ok1 && ok2;
-        });
-        drawChart(filt);
-      }
-
       // Load CSVs
       Promise.all(dataFiles.map(d =>
         d3.csv(d.file, d3.autoType).then(raw => ({ name: d.name, raw }))
       )).then(allData => {
-        // Compute maxes
-        const flats = cols => allData.flatMap(ds => ds.raw.map(r => r[cols]));
-        const maxCal  = d3.max(flats('calorie')),
-              maxCarb = d3.max(flats('total_carb')),
-              maxSug  = d3.max(flats('sugar')),
-              maxProt = d3.max(flats('protein'));
+        // Compute slider maxima
+        const values = key => allData.flatMap(ds => ds.raw.map(r => r[key]));
+        const maxCal = d3.max(values('calorie'));
+        const maxCarb = d3.max(values('total_carb'));
+        const maxSugar = d3.max(values('sugar'));
+        const maxProt = d3.max(values('protein'));
 
-        // Prepare data
+        // Prepare datasets
         const times = d3.range(0,61,5).map(String);
         const dataSets = allData.map(({ name, raw }) => ({
           name,
           meta: raw,
           seriesRaw: raw.map(d =>
-            times.map(t => ({ minute:+t, value:d[t] })).filter(pt => pt.value != null)
+            times.map(t => ({ minute: +t, value: d[t] })).filter(pt => pt.value != null)
           )
         }));
 
-        // Scales and axes
-        const width  = +svg.attr('width'),
-              height = +svg.attr('height'),
-              W      = width - 50,
-              H      = height - 50;
-        const x = d3.scaleLinear().domain([0,60]).range([40,W]);
-        const y = d3.scaleLinear().range([H,10]);
+        // Scales & axes
+        const width = +svg.attr('width');
+        const height = +svg.attr('height');
+        const W = width - 60;
+        const H = height - 60;
+        const x = d3.scaleLinear().domain([0,60]).range([50, W]);
+        const y = d3.scaleLinear().range([H, 50]);
 
+        // X axis
         svg.append('g')
-           .attr('transform','translate(0,'+H+')')
-           .call(d3.axisBottom(x))
+           .attr('transform', 'translate(0,' + H + ')')
+           .call(d3.axisBottom(x).ticks(6))
            .append('text')
-           .attr('x',W/2)
-           .attr('y',35)
-           .attr('fill','#000')
+           .attr('x', W/2)
+           .attr('y', 40)
+           .attr('fill', '#333')
+           .attr('font-size', '14px')
            .text('Minutes After Meal');
 
+        // Y axis
         svg.append('g')
-           .attr('transform','translate(40,0)')
-           .call(d3.axisLeft(y))
+           .attr('transform', 'translate(50,0)')
+           .call(d3.axisLeft(y).ticks(6))
            .append('text')
-           .attr('transform','rotate(-90)')
-           .attr('x',-H/2)
-           .attr('y',-35)
-           .attr('fill','#000')
+           .attr('transform', 'rotate(-90)')
+           .attr('x', -H/2)
+           .attr('y', -40)
+           .attr('fill', '#333')
+           .attr('font-size', '14px')
            .text('Δ Glucose Level (mg/dL)');
+
+        // Title
+        svg.append('text')
+           .attr('x', width/2)
+           .attr('y', 30)
+           .attr('text-anchor', 'middle')
+           .attr('font-size', '18px')
+           .attr('font-weight', '600')
+           .attr('fill', '#222')
+           .text('Effect of Food on Glucose Over Time');
 
         // Zoom behavior
         const zoom = d3.zoom()
-          .scaleExtent([1,10])
+          .scaleExtent([1,8])
           .translateExtent([[0,0],[width,height]])
           .extent([[0,0],[width,height]])
           .on('zoom', event => {
             const nx = event.transform.rescaleX(x);
             const ny = event.transform.rescaleY(y);
-            svg.select('g.x-axis').call(d3.axisBottom(nx));
-            svg.select('g.y-axis').call(d3.axisLeft(ny));
-            svg.selectAll('.data-group path')
+            svg.selectAll('g.x-axis').call(d3.axisBottom(nx));
+            svg.selectAll('g.y-axis').call(d3.axisLeft(ny));
+            svg.selectAll('.data-line')
                .attr('d', d3.line()
                  .x(pt => nx(pt.minute))
                  .y(pt => ny(pt.value))
                );
-            svg.selectAll('.data-group circle')
+            svg.selectAll('.data-circle')
                .attr('cx', pt => nx(pt.minute))
                .attr('cy', pt => ny(pt.value));
           });
         svg.call(zoom);
 
-        // Sliders
-        function makeSlider(id,mn,mx) {
+        // Create sliders
+        function makeSlider(id, max) {
           const el = document.getElementById(id);
           if (el.noUiSlider) el.noUiSlider.destroy();
           noUiSlider.create(el, {
-            start:[0,mx], connect:true,
-            range:{ min:mn, max:mx }, step:1,
-            tooltips:[true,true],
-            format:{ to:v=>v.toFixed(1), from:v=>+v }
+            start: [0, max],
+            connect: true,
+            range: { min: 0, max },
+            tooltips: true,
+            format: { to: v => v.toFixed(0), from: v => +v }
           });
           return el.noUiSlider;
         }
-        const sCal = makeSlider('calorie-slider',0,maxCal),
-              sCarb= makeSlider('carbs-slider',0,maxCarb),
-              sSug = makeSlider('sugar-slider',0,maxSug),
-              sProt= makeSlider('protein-slider',0,maxProt);
+        const sCal = makeSlider('calorie-slider', maxCal);
+        const sCarb = makeSlider('carbs-slider', maxCarb);
+        const sSugar = makeSlider('sugar-slider', maxSugar);
+        const sProt = makeSlider('protein-slider', maxProt);
 
         // Line generator
-        const lineGen = d3.line().x(d=>x(d.minute)).y(d=>y(d.value)).curve(d3.curveBasis);
+        const lineGen = d3.line().curve(d3.curveMonotoneX)
+          .x(d => x(d.minute)).y(d => y(d.value));
 
         // Update chart
         function update() {
-          const [c0,c1]=sCal.get().map(Number), [cb0,cb1]=sCarb.get().map(Number);
-          const [s0,s1]=sSug.get().map(Number), [p0,p1]=sProt.get().map(Number);
-          const seriesData = dataSets.map(ds => {
-            const idx = ds.meta.map((m,i) => (m.calorie>=c0&&m.calorie<=c1&&m.total_carb>=cb0&&m.total_carb<=cb1&&m.sugar>=s0&&m.sugar<=s1&&m.protein>=p0&&m.protein<=p1)?i:null).filter(i=>i!=null);
-            const agg = times.map(t=>({ minute:+t, value:d3.mean(idx.map(i=>ds.seriesRaw[i].find(pt=>pt.minute===+t)?.value).filter(v=>v!=null)) })).filter(d=>d.value!=null);
-            return { name:ds.name, series:agg };
-          }).filter(d=>d.series.length);
+          const ranges = [sCal, sCarb, sSugar, sProt].map(s => s.get().map(Number));
+          const [c0, c1] = ranges[0], [cb0, cb1] = ranges[1], [s0, s1] = ranges[2], [p0, p1] = ranges[3];
 
-          y.domain(d3.extent(seriesData.flatMap(d=>d.series.map(pt=>pt.value)))).nice();
+          const filtered = dataSets.map(ds => {
+            const idx = ds.meta.map((m,i) => (
+              m.calorie >= c0 && m.calorie <= c1 &&
+              m.total_carb >= cb0 && m.total_carb <= cb1 &&
+              m.sugar >= s0 && m.sugar <= s1 &&
+              m.protein >= p0 && m.protein <= p1
+            ) ? i : null).filter(i => i !== null);
+            const agg = times.map(t => ({
+              minute: +t,
+              value: d3.mean(idx.map(i => ds.seriesRaw[i].find(pt => pt.minute === +t)?.value).filter(v => v != null))
+            })).filter(d => d.value != null);
+            return { name: ds.name, series: agg };
+          }).filter(d => d.series.length);
+
+          y.domain(d3.extent(filtered.flatMap(d => d.series.map(pt => pt.value)))).nice();
           svg.select('g.y-axis').call(d3.axisLeft(y));
 
-          const color = d3.scaleSequential(d3.interpolateViridis).domain([0,seriesData.length-1||1]);
+          const color = d3.scaleSequential(d3.interpolateViridis)
+            .domain([0, filtered.length - 1 || 1]);
 
-          const groups = svg.selectAll('.data-group').data(seriesData, d=>d.name);
-          groups.exit().remove();
-          const ge = groups.enter().append('g').attr('class','data-group');
+          // DATA JOIN
+          const lines = svg.selectAll('.data-line').data(filtered, d => d.name);
+          lines.enter().append('path')
+            .attr('class', 'data-line')
+            .merge(lines)
+            .attr('fill', 'none')
+            .attr('stroke', (d,i) => color(i))
+            .attr('stroke-width', 2)
+            .attr('d', d => lineGen(d.series));
+          lines.exit().remove();
 
-          ge.merge(groups).each(function(d,i){
-            // path
-            const p = d3.select(this).selectAll('path').data([d.series]);
-            p.enter().append('path').merge(p)
-              .attr('d', lineGen)
-              .attr('fill','none')
-              .attr('stroke', color(i))
-              .attr('stroke-width',2);
-            p.exit().remove();
-            // circles
-            const cs = d3.select(this).selectAll('circle').data(d.series);
-            cs.enter().append('circle').merge(cs)
-              .attr('r',3)
-              .attr('cx',pt=>x(pt.minute))
-              .attr('cy',pt=>y(pt.value))
-              .attr('fill',color(i))
-              .on('mouseover',(e,pt)=>tooltip.style('opacity',1).html(d.name+'<br>Min:'+pt.minute+'<br>Val:'+pt.value))
-              .on('mousemove',e=>tooltip.style('left',e.pageX+5+'px').style('top',e.pageY-5+'px'))
-              .on('mouseout',()=>tooltip.style('opacity',0));
-            cs.exit().remove();
-          });
+          const circles = svg.selectAll('.data-circle').data(filtered.flatMap(d => d.series.map(pt => ({ ...pt, name: d.name }))), d => d.name + '-' + d.minute);
+          circles.enter().append('circle')
+            .attr('class', 'data-circle')
+            .attr('r', 3)
+            .merge(circles)
+            .attr('cx', d => x(d.minute))
+            .attr('cy', d => y(d.value))
+            .attr('fill', d => color(filtered.findIndex(s => s.name === d.name)))
+            .on('mouseover', (e,d) => tooltip.style('opacity', 1).html(d.name + '<br>Min: ' + d.minute + '<br>Val: ' + d.value))
+            .on('mousemove', e => tooltip.style('left', (e.pageX+10) + 'px').style('top', (e.pageY-10) + 'px'))
+            .on('mouseout', () => tooltip.style('opacity', 0));
+          circles.exit().remove();
 
-          // legend
-          svg.selectAll('.legend').remove();
-          const legend = svg.append('g').attr('class','legend').attr('transform','translate('+(W-120)+',20)');
-          seriesData.forEach((d,i)=>{
-            const item = legend.append('g').attr('class','legend-item').attr('transform','translate(0,'+i*20+')')
-              .on('click',function(){
-                const vis = d3.selectAll('.data-group').filter(g=>g.name===d.name)
-                  .style('display', function(){ return d3.select(this).style('display')==='none'?'block':'none'; });
+          // Legend
+          svg.selectAll('g.legend').remove();
+          const legend = svg.append('g').attr('class', 'legend').attr('transform', `translate(${W-100},60)`);
+          filtered.forEach((d,i) => {
+            const item = legend.append('g').attr('class', 'legend-item').attr('transform', `translate(0,${i*25})`)
+              .on('click', () => {
+                const visible = svg.selectAll('.data-line').filter(l => l.name === d.name).style('display') !== 'none';
+                svg.selectAll('.data-line').filter(l => l.name === d.name).style('display', visible ? 'none' : null);
+                svg.selectAll('.data-circle').filter(c => c.name === d.name).style('display', visible ? 'none' : null);
               });
-            item.append('rect').attr('width',10).attr('height',10).attr('fill',color(i));
-            item.append('text').attr('x',15).attr('y',10).text(d.name).attr('font-size','12px');
+            item.append('rect').attr('width', 12).attr('height', 12).attr('fill', color(i));
+            item.append('text').attr('x', 18).attr('y', 12).attr('fill', '#333').text(d.name).attr('font-size', '13px');
           });
         }
 
-        [sCal,sCarb,sSug,sProt].forEach(s=>s.on('update', update));
-        d3.select('#reset-button').on('click',()=>{
-          sCal.set([0,maxCal]); sCarb.set([0,maxCarb]); sSug.set([0,maxSug]); sProt.set([0,maxProt]);
-          genderSelect.property('value','both-mf'); glucoseSelect.property('value','both-hl');
+        [sCal, sCarb, sSugar, sProt].forEach(s => s.on('update', update));
+        d3.select('#reset-button').on('click', () => {
+          sCal.set([0, maxCal]); sCarb.set([0, maxCarb]); sSugar.set([0, maxSugar]); sProt.set([0, maxProt]);
           drawChart(allDataFiles);
         });
-
-        // Title
-        svg.append('text')
-           .attr('x',width/2)
-           .attr('y',20)
-           .attr('text-anchor','middle')
-           .attr('font-size','16px')
-           .attr('font-weight','bold')
-           .text('Glucose Change vs. Time After Meal');
 
         update();
       });
