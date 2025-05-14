@@ -1,6 +1,8 @@
 // Responsive SVG sizing
 const svg = d3.select('svg');
-const margin = { top: 50, right: 190, bottom: 50, left: 50 };
+const margin = { top: 50, right: 190, bottom: 60, left: 70 };
+// Move filter controls below the chart title to prevent overlap
+document.getElementById('controls').style.top = `${margin.top}px`;
 function resizeSvg() {
   const ctrlH = document.getElementById('controls').offsetHeight;
   const instrH = document.getElementById('instructions').offsetHeight;
@@ -13,10 +15,10 @@ resizeSvg();
 
 // Data files
 const allDataFiles = [
-  { name: 'Male & High Glucose',  file: 'data/male_high.csv' },
-  { name: 'Male & Low Glucose',   file: 'data/male_low.csv'  },
-  { name: 'Female & High Glucose',  file: 'data/female_high.csv'},
-  { name: 'Female & Low Glucose',   file: 'data/female_low.csv' }
+  { name: 'Male & High Glucose',   file: 'data/male_high.csv' },
+  { name: 'Male & Low Glucose',    file: 'data/male_low.csv'  },
+  { name: 'Female & High Glucose', file: 'data/female_high.csv'},
+  { name: 'Female & Low Glucose',  file: 'data/female_low.csv' }
 ];
 
 function drawChart(files) {
@@ -50,19 +52,37 @@ function drawChart(files) {
       .attr('class', 'x-axis')
       .attr('transform', `translate(0,${H})`)
       .call(d3.axisBottom(x));
+    // X-axis label
+    xAxisG.append('text')
+      .attr('x', W / 2)
+      .attr('y', 40)
+      .attr('fill', '#000')
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '12px')
+      .text('Time Since Meal (minutes)');
+
     const yAxisG = g.append('g')
       .attr('class', 'y-axis')
       .call(d3.axisLeft(y));
+    // Y-axis label
+    yAxisG.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('x', -H / 2)
+      .attr('y', -50)
+      .attr('fill', '#000')
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '12px')
+      .text('Change in Glucose (mg/dL)');
 
     // Title
     svg.append('text')
-      .attr('x', width/2)
-      .attr('y', margin.top/2)
+      .attr('x', width / 2)
+      .attr('y', margin.top / 2)
       .attr('text-anchor', 'middle')
       .attr('font-size', '18px')
       .attr('font-weight', '600')
       .attr('fill', '#222')
-      .text('Effect of Food on Glucose Over Time');
+      .text('Glucose Response Over 60 Minutes Post-Meal');
 
     // Clip path
     svg.append('defs').append('clipPath')
@@ -122,15 +142,12 @@ function drawChart(files) {
       sCarb.set([0, maxCarb]);
       sSugar.set([0, maxSugar]);
       sProt.set([0, maxProt]);
-      // reset zoom
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
-      // rebuild chart to restore all lines and legend opacities
       update();
     });
 
     // Update
     function update() {
-      // ensure any hidden lines/circles are shown
       chartBody.selectAll('.data-line').style('display', null);
       chartBody.selectAll('.data-circle').style('display', null);
 
@@ -150,13 +167,11 @@ function drawChart(files) {
         return { name: ds.name, series };
       }).filter(d => d.series.length > 0);
 
-      // Reset zoom on filter
       svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
       y.domain(d3.extent(filtered.flatMap(d=>d.series.map(pt=>pt.value)))).nice();
-      yAxisG.call(d3.axisLeft(y));
+      g.select('.y-axis').call(d3.axisLeft(y));
 
       const color = d3.scaleSequential(d3.interpolateViridis).domain([0, Math.max(filtered.length-1,1)]);
-      // Lines
       const lines = chartBody.selectAll('.data-line').data(filtered, d=>d.name);
       lines.enter().append('path').attr('class','data-line')
         .merge(lines)
@@ -165,7 +180,7 @@ function drawChart(files) {
         .attr('stroke-width',2)
         .attr('d', d => d3.line().x(pt => x(pt.minute)).y(pt => y(pt.value))(d.series));
       lines.exit().remove();
-      // Circles
+
       const circles = chartBody.selectAll('.data-circle')
         .data(filtered.flatMap(d=>d.series.map(pt=>({ ...pt, name:d.name }))), d=>d.name+'-'+d.minute);
       circles.enter().append('circle').attr('class','data-circle').attr('r',3)
@@ -174,7 +189,7 @@ function drawChart(files) {
         .attr('cx', d=>x(d.minute))
         .attr('cy', d=>y(d.value));
       circles.exit().remove();
-      // Legend
+
       svg.selectAll('g.legend').remove();
       const legend = svg.append('g').attr('class','legend').attr('transform',`translate(${width-margin.right+10},${margin.top})`);
       filtered.forEach((d,i) => {
@@ -190,7 +205,6 @@ function drawChart(files) {
           const visible = selLine.style('display') !== 'none';
           selLine.style('display', visible?'none':null);
           selCirc.style('display', visible?'none':null);
-          // adjust legend opacity
           rect.style('opacity', visible?0.3:1);
           item.select('text').style('opacity', visible?0.3:1);
         });
