@@ -124,23 +124,30 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
 
     // circles
     const circs = d3.select(this).selectAll('circle').data(d.series);
+
+    let tooltip = d3.select('body').select('div.tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select('body').append('div').attr('class', 'tooltip');
+    }
     circs.enter().append('circle').attr('r', 3)
       .merge(circs)
       .attr('cx', pt => d3.scaleLinear().domain([0, 60]).range([40, +svg.attr('width') - 50])(pt.minute))
       .attr('cy', pt => y(pt.value))
       .attr('fill', colorScale(i))
-      .on('mouseover', (event, pt) => {
-        renderTooltipContent(pt);
-        updateTooltipVisibility(true);
-        updateTooltipPosition(event);
-        console.log('mouseenter');
-      })
-      .on('mouseleave', (event) => {
-                  // TODO: Hide the tooltip
-                  //d3.select(event.currentTarget).style('fill-opacity', 0.7);
-                  //updateTooltipVisibility(false);
-                  console.log('mouseleave');
-      });
+      .on('mouseover', (e,d) => tooltip.style('opacity', 1).html(d.name + '<br>Min: ' + d.minute + '<br>Val: ' + d.value))
+      .on('mousemove', e => tooltip.style('left', (e.pageX+10) + 'px').style('top', (e.pageY-10) + 'px'));
+      // .on('mouseover', (event, pt) => {
+      //   renderTooltipContent(pt);
+      //   updateTooltipVisibility(true);
+      //   updateTooltipPosition(event);
+      //   console.log('mouseenter');
+      // })
+      // .on('mouseleave', (event) => {
+      //             // TODO: Hide the tooltip
+      //             //d3.select(event.currentTarget).style('fill-opacity', 0.7);
+      //             //updateTooltipVisibility(false);
+      //             console.log('mouseleave');
+      // });
     circs.exit().remove();
   });
 
@@ -186,9 +193,14 @@ async function initializeChartAndSliders(dataFiles) {
   // render axis
   const x = d3.scaleLinear().domain([0, 60]).range([40, W]);
   svg.append('g')
-    .attr('class', 'x-axis')
-    .attr('transform', `translate(0,${H})`)
-    .call(d3.axisBottom(x));
+           .attr('transform', 'translate(0,' + H + ')')
+           .call(d3.axisBottom(x).ticks(6))
+           .append('text')
+           .attr('x', W/2)
+           .attr('y', 40)
+           .attr('fill', '#333')
+           .attr('font-size', '14px')
+           .text('Minutes After Meal');
 
   const y = d3.scaleLinear().range([H, 10]);
   svg.append('g').attr('class', 'y-axis').attr('transform', `translate(40,0)`);
