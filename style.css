@@ -85,16 +85,15 @@ div.writeup {
 }
 
 .tooltip {
-    position: fixed;
-    top: 1em;
-    left: 1em;
-    background-color: white;
-    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
-    border-radius: 15%;
-    backdrop-filter: blur(10px);
-    backdrop-filter: opacity(20%);
-    padding: 20px;
+    position: absolute;
     pointer-events: none;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
 circle {

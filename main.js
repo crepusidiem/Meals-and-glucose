@@ -135,7 +135,8 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       .attr('cy', pt => y(pt.value))
       .attr('fill', colorScale(i))
       .on('mouseover', (e,d) => tooltip.style('opacity', 1).html(d.name + '<br>Min: ' + d.minute + '<br>Val: ' + d.value))
-      .on('mousemove', e => tooltip.style('left', (e.pageX+10) + 'px').style('top', (e.pageY-10) + 'px'));
+      .on('mousemove', e => tooltip.style('left', (e.pageX+10) + 'px').style('top', (e.pageY-10) + 'px'))
+      .on('mouseout', () => tooltip.style('opacity', 0));
       // .on('mouseover', (event, pt) => {
       //   renderTooltipContent(pt);
       //   updateTooltipVisibility(true);
