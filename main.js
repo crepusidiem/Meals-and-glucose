@@ -257,6 +257,7 @@ function onFilterChange() {
   [select_sMin,select_sMax]   = sugarSlider.noUiSlider.get().map(Number);
   [select_pMin,select_pMax]   = proteinSlider.noUiSlider.get().map(Number);
   drawChart(filtered);
+  //set the value after 50 ms.
   setTimeout(() => {
     calorieSlider.noUiSlider.set(currentValues.calorie);
     carbsSlider.noUiSlider.set(currentValues.carbs);
