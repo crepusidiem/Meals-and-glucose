@@ -128,11 +128,44 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
       .merge(circs)
       .attr('cx', pt => d3.scaleLinear().domain([0, 60]).range([40, +svg.attr('width') - 50])(pt.minute))
       .attr('cy', pt => y(pt.value))
-      .attr('fill', colorScale(i));
+      .attr('fill', colorScale(i))
+      .on('mouseover', (event, pt) => {
+        renderTooltipContent(pt);
+        updateTooltipVisibility(true);
+        updateTooltipPosition(event);
+        console.log('mouseenter');
+      })
+      .on('mouseleave', (event) => {
+                  // TODO: Hide the tooltip
+                  //d3.select(event.currentTarget).style('fill-opacity', 0.7);
+                  //updateTooltipVisibility(false);
+                  console.log('mouseleave');
+      });
     circs.exit().remove();
   });
 
   groups.exit().remove();
+}
+
+function renderTooltipContent(commit) {
+  const time = document.getElementById('commit-time');
+  const glucose = document.getElementById('commit-glucose');
+
+  if (Object.keys(commit).length === 0) return;
+
+  time.textContent = commit.minute;
+  glucose.textContent = commit.value;
+}
+
+function updateTooltipVisibility(isVisible) {
+  const tooltip = document.getElementById('commit-tooltip');
+  tooltip.hidden = !isVisible;
+}
+
+function updateTooltipPosition(event) {
+  const tooltip = document.getElementById('commit-tooltip');
+  tooltip.style.left = `${event.clientX}px`;
+  tooltip.style.top = `${event.clientY}px`;
 }
 
 // initialize the chart and sliders

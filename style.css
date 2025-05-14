@@ -83,3 +83,20 @@ svg {
 div.writeup {
     margin-top: 40px;
 }
+
+.tooltip {
+    position: fixed;
+    top: 1em;
+    left: 1em;
+    background-color: white;
+    box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.15);
+    border-radius: 15%;
+    backdrop-filter: blur(10px);
+    backdrop-filter: opacity(20%);
+    padding: 20px;
+    pointer-events: none;
+}
+
+circle {
+    pointer-events: all; /* Ensures circles capture mouse events */
+}
