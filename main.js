@@ -108,7 +108,7 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
   // const colorScale = d3.scaleOrdinal(d3.schemePaired);
   const colorScale = d3.scaleOrdinal()
     .domain(['(M, High)', '(M, Low)', '(F, High)', '(F, Low)'])
-    .range(['darkblue', 'lightblue', 'darkred', 'lightcoral']);
+    .range(['#014b72', '#1badfb', '#8b0404', '#f45252']);
   // draw paths and circles for each dataset
   enterG.merge(groups).each(function(d, i) {
     const lineGen = d3.line()
@@ -204,27 +204,6 @@ function updateChart(dataSets, svg, calorieSlider, carbsSlider, sugarSlider, pro
     .style('alignment-baseline', 'middle');
 
   legendItems.exit().remove();
-}
-
-function renderTooltipContent(commit) {
-  const time = document.getElementById('commit-time');
-  const glucose = document.getElementById('commit-glucose');
-
-  if (Object.keys(commit).length === 0) return;
-
-  time.textContent = commit.minute;
-  glucose.textContent = commit.value;
-}
-
-function updateTooltipVisibility(isVisible) {
-  const tooltip = document.getElementById('commit-tooltip');
-  tooltip.hidden = !isVisible;
-}
-
-function updateTooltipPosition(event) {
-  const tooltip = document.getElementById('commit-tooltip');
-  tooltip.style.left = `${event.clientX}px`;
-  tooltip.style.top = `${event.clientY}px`;
 }
 
 // initialize the chart and sliders
